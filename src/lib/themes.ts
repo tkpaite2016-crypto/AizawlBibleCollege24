@@ -1,4 +1,14 @@
-export type ThemeId = 'classic' | 'royal-gold' | 'aurora' | 'midnight' | 'crimson' | 'emerald';
+import type React from 'react';
+
+export type ThemeId =
+  | 'classic'
+  | 'royal-gold'
+  | 'aurora'
+  | 'midnight'
+  | 'crimson'
+  | 'emerald'
+  | 'sterling'
+  | 'restricted';
 
 export type ThemeDef = {
   id: ThemeId;
@@ -13,69 +23,94 @@ export type ThemeDef = {
   shimmerClass?: string;
 };
 
-import type React from 'react';
-
 export const THEMES: ThemeDef[] = [
   {
     id: 'classic',
     label: 'Classic Navy',
-    description: 'Clean navy blue — the default look',
-    animated: false,
-    coverClass: 'bg-gradient-to-br from-navy-900 via-navy-800 to-navy-950',
+    description: 'Refined navy blue with a polished institutional finish',
+    animated: true,
+    coverClass: 'theme-classic-cover',
     ringClass: '',
     avatarBorderClass: 'border-white',
-    badgeClass: 'bg-navy-700 text-white',
+    badgeClass: 'bg-navy-800/90 text-white',
+    shimmerClass: 'theme-classic-shimmer',
   },
   {
     id: 'royal-gold',
     label: 'Royal Gold',
-    description: 'Luxurious gold gradient for distinguished profiles',
-    animated: false,
-    coverClass: 'bg-gradient-to-r from-yellow-800 via-amber-600 to-yellow-700',
-    ringClass: 'ring-2 ring-amber-400',
+    description: 'Luxurious burnished gold — for distinguished profiles',
+    animated: true,
+    coverClass: 'theme-royal-gold-cover',
+    ringClass: 'ring-2 ring-amber-400/80',
     avatarBorderClass: 'border-amber-300',
-    badgeClass: 'bg-amber-900/80 text-amber-100',
+    badgeClass: 'bg-amber-950/90 text-amber-100',
+    shimmerClass: 'theme-royal-gold-shimmer',
   },
   {
     id: 'aurora',
-    label: 'Aurora',
-    description: 'Animated northern lights gradient effect',
+    label: 'Aurora Borealis',
+    description: 'Breathtaking animated northern lights gradient',
     animated: true,
     coverClass: 'theme-aurora-cover',
-    ringClass: 'ring-2 ring-purple-400',
-    avatarBorderClass: 'border-purple-300',
-    badgeClass: 'bg-purple-900/80 text-purple-100',
+    ringClass: 'ring-2 ring-violet-400/70',
+    avatarBorderClass: 'border-violet-300',
+    badgeClass: 'bg-violet-950/90 text-violet-100',
     shimmerClass: 'theme-aurora-shimmer',
   },
   {
     id: 'midnight',
-    label: 'Midnight Blue',
-    description: 'Deep cosmic blue with glowing accents',
+    label: 'Midnight Galaxy',
+    description: 'Deep cosmos with drifting star particles',
     animated: true,
     coverClass: 'theme-midnight-cover',
-    ringClass: 'ring-2 ring-blue-500',
-    avatarBorderClass: 'border-blue-400',
-    badgeClass: 'bg-blue-900/80 text-blue-100',
+    ringClass: 'ring-2 ring-blue-400/60',
+    avatarBorderClass: 'border-blue-300',
+    badgeClass: 'bg-blue-950/90 text-blue-100',
+    shimmerClass: 'theme-midnight-stars',
   },
   {
     id: 'crimson',
-    label: 'Crimson',
-    description: 'Bold deep red for a powerful presence',
-    animated: false,
-    coverClass: 'bg-gradient-to-r from-red-900 via-rose-800 to-red-900',
-    ringClass: 'ring-2 ring-red-400',
-    avatarBorderClass: 'border-red-300',
-    badgeClass: 'bg-red-900/80 text-red-100',
+    label: 'Crimson Prestige',
+    description: 'Sophisticated deep burgundy with a velvet finish',
+    animated: true,
+    coverClass: 'theme-crimson-cover',
+    ringClass: 'ring-2 ring-rose-400/70',
+    avatarBorderClass: 'border-rose-300',
+    badgeClass: 'bg-rose-950/90 text-rose-100',
+    shimmerClass: 'theme-crimson-shimmer',
   },
   {
     id: 'emerald',
-    label: 'Emerald Forest',
-    description: 'Fresh green tones, full of life',
-    animated: false,
-    coverClass: 'bg-gradient-to-br from-emerald-900 via-green-800 to-teal-900',
-    ringClass: 'ring-2 ring-emerald-400',
+    label: 'Emerald Grove',
+    description: 'Lush forest depth with rich jewel-toned accents',
+    animated: true,
+    coverClass: 'theme-emerald-cover',
+    ringClass: 'ring-2 ring-emerald-400/70',
     avatarBorderClass: 'border-emerald-300',
-    badgeClass: 'bg-emerald-900/80 text-emerald-100',
+    badgeClass: 'bg-emerald-950/90 text-emerald-100',
+    shimmerClass: 'theme-emerald-shimmer',
+  },
+  {
+    id: 'sterling',
+    label: 'Sterling Finance',
+    description: 'Premium teal-slate — the mark of financial authority',
+    animated: true,
+    coverClass: 'theme-sterling-cover',
+    ringClass: 'ring-2 ring-teal-400/70',
+    avatarBorderClass: 'border-teal-300',
+    badgeClass: 'bg-teal-950/90 text-teal-100',
+    shimmerClass: 'theme-sterling-shimmer',
+  },
+  {
+    id: 'restricted',
+    label: 'Restricted',
+    description: 'Institutional charcoal — account access restricted',
+    animated: true,
+    coverClass: 'theme-restricted-cover',
+    ringClass: 'ring-2 ring-red-900',
+    avatarBorderClass: 'border-slate-700',
+    badgeClass: 'bg-slate-900/90 text-slate-300',
+    shimmerClass: 'theme-restricted-pulse',
   },
 ];
 

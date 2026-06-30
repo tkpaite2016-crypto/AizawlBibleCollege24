@@ -1,15 +1,45 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BookOpen, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function UserLogin() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const emailParam = searchParams.get('email');
+    const passwordParam = searchParams.get('password');
+    const autoLogin = searchParams.get('auto_login');
+
+    if (emailParam) setEmail(decodeURIComponent(emailParam));
+    if (passwordParam) setPassword(decodeURIComponent(passwordParam));
+
+    if (autoLogin === 'true' && emailParam && passwordParam) {
+      handleAutoLogin(decodeURIComponent(emailParam), decodeURIComponent(passwordParam));
+    }
+  }, [searchParams]);
+
+  async function handleAutoLogin(emailVal: string, passVal: string) {
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithPassword({ email: emailVal, password: passVal });
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    } else {
+      const openProfile = searchParams.get('open_profile');
+      if (openProfile === 'true') {
+        navigate('/?open_profile=true');
+      } else {
+        navigate('/');
+      }
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,7 +50,12 @@ export default function UserLogin() {
       setError(error.message);
       setLoading(false);
     } else {
-      navigate('/');
+      const openProfile = searchParams.get('open_profile');
+      if (openProfile === 'true') {
+        navigate('/?open_profile=true');
+      } else {
+        navigate('/');
+      }
     }
   }
 

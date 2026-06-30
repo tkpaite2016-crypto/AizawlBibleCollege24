@@ -82,11 +82,18 @@ export default function Navbar() {
         scrolled ? 'bg-navy-950 shadow-lg' : 'bg-navy-950'
       }`}
     >
-      {/* Top bar */}
-      <div className="bg-gold-500 py-1 px-4 text-center overflow-hidden">
-        <p className="text-navy-950 text-xs font-medium truncate">
+      {/* Top bar - scrolling marquee on mobile */}
+      <div className="bg-gold-500 py-1 px-2 text-center overflow-hidden">
+        {/* Desktop: show full text if space allows, otherwise truncate */}
+        <p className="hidden md:block text-navy-950 text-xs font-medium truncate">
           Accredited by Pentecostal Association for Theological Accreditation (PATA) | Member of Evangelical Theological Colleges Association – NEI | Estd. 1998
         </p>
+        {/* Mobile: scrolling marquee */}
+        <div className="md:hidden overflow-hidden">
+          <span className="marquee-ticker text-navy-950 text-xs font-medium">
+            Accredited by Pentecostal Association for Theological Accreditation (PATA) | Member of Evangelical Theological Colleges Association – NEI | Estd. 1998
+          </span>
+        </div>
       </div>
 
       <nav className="w-full max-w-screen-xl mx-auto px-3 md:px-4">

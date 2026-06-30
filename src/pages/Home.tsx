@@ -259,7 +259,7 @@ export default function Home() {
           <div className="flex flex-wrap items-center justify-center gap-6 md:gap-12 text-white text-sm">
             <div className="flex items-center gap-2">
               <Award className="w-4 h-4 text-gold-400" />
-              <span>ETCA Member</span>
+              <span>PATA Accredited</span>
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-gold-400" />

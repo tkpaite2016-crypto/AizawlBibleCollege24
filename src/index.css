@@ -115,41 +115,184 @@
 
 /* ===== PROFILE THEMES ===== */
 
-/* Aurora theme — animated purple/teal gradient */
-@keyframes aurora-shift {
+/* Shared shimmer sweep */
+@keyframes shimmer-sweep {
+  0%   { transform: translateX(-120%) skewX(-15deg); }
+  100% { transform: translateX(220%) skewX(-15deg); }
+}
+
+/* ── Classic Navy ─────────────────────────────────────── */
+@keyframes classic-breathe {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+.theme-classic-cover {
+  background: linear-gradient(135deg, #0c1340, #1e2daf, #111640, #1a237e, #0c1340);
+  background-size: 300% 300%;
+  animation: classic-breathe 10s ease infinite;
+}
+.theme-classic-shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+  animation: shimmer-sweep 4s ease-in-out infinite;
+}
+
+/* ── Royal Gold ───────────────────────────────────────── */
+@keyframes gold-shift {
   0%   { background-position: 0% 50%; }
   50%  { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
-
-.theme-aurora-cover {
-  background: linear-gradient(135deg, #1a0533, #4c1d95, #0d4f7c, #134e4a, #4c1d95);
-  background-size: 300% 300%;
-  animation: aurora-shift 6s ease infinite;
+.theme-royal-gold-cover {
+  background: linear-gradient(135deg, #451a03, #78350f, #b45309, #d97706, #92400e, #451a03);
+  background-size: 400% 400%;
+  animation: gold-shift 8s ease infinite;
+}
+.theme-royal-gold-shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; width: 35%;
+  background: linear-gradient(90deg, transparent, rgba(251,191,36,0.18), rgba(253,224,71,0.10), transparent);
+  animation: shimmer-sweep 3s ease-in-out infinite;
 }
 
+/* ── Aurora Borealis ──────────────────────────────────── */
+@keyframes aurora-flow {
+  0%   { background-position: 0% 50%; }
+  33%  { background-position: 50% 100%; }
+  66%  { background-position: 100% 0%; }
+  100% { background-position: 0% 50%; }
+}
+.theme-aurora-cover {
+  background: linear-gradient(135deg, #0f0628, #5b21b6, #1d4ed8, #0d9488, #7c3aed, #0f0628);
+  background-size: 400% 400%;
+  animation: aurora-flow 7s ease infinite;
+}
 .theme-aurora-shimmer::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
-  animation: shimmer 2.5s ease infinite;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(167,139,250,0.12) 30%,
+    rgba(20,184,166,0.10) 60%,
+    transparent 100%
+  );
+  animation: shimmer-sweep 2.8s ease-in-out infinite;
 }
 
-@keyframes shimmer {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+/* ── Midnight Galaxy ──────────────────────────────────── */
+@keyframes midnight-drift {
+  0%   { background-position: 0% 0%; }
+  50%  { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
 }
-
-/* Midnight theme — starfield pulse */
-@keyframes midnight-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.8; }
-}
-
 .theme-midnight-cover {
-  background: radial-gradient(ellipse at 30% 40%, #1e3a5f 0%, #0a1628 50%, #0d1f3a 100%);
-  animation: midnight-pulse 4s ease-in-out infinite;
+  background: radial-gradient(ellipse at 20% 30%, #1e3a5f 0%, #0a1628 45%, #060d1f 100%),
+              radial-gradient(ellipse at 80% 70%, #162032 0%, #060d1f 60%);
+  background-blend-mode: screen;
+  position: relative;
+}
+/* Star particles via box-shadow trick */
+.theme-midnight-stars::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 15% 20%, rgba(255,255,255,0.7) 0%, transparent 100%),
+    radial-gradient(1px 1px at 35% 60%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 55% 15%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 70% 75%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 85% 40%, rgba(255,255,255,0.7) 0%, transparent 100%),
+    radial-gradient(1px 1px at 25% 85%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 90% 10%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 45% 45%, rgba(147,197,253,0.6) 0%, transparent 100%);
+  animation: star-twinkle 5s ease-in-out infinite alternate;
+}
+@keyframes star-twinkle {
+  0%   { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+/* ── Crimson Prestige ─────────────────────────────────── */
+@keyframes crimson-pulse {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+.theme-crimson-cover {
+  background: linear-gradient(135deg, #1a0010, #4c0519, #881337, #9f1239, #4c0519, #1a0010);
+  background-size: 300% 300%;
+  animation: crimson-pulse 9s ease infinite;
+}
+.theme-crimson-shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(251,113,133,0.10), transparent);
+  animation: shimmer-sweep 3.5s ease-in-out infinite;
+}
+
+/* ── Emerald Grove ────────────────────────────────────── */
+@keyframes emerald-flow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.theme-emerald-cover {
+  background: linear-gradient(135deg, #022c22, #064e3b, #065f46, #047857, #064e3b, #022c22);
+  background-size: 300% 300%;
+  animation: emerald-flow 10s ease infinite;
+}
+.theme-emerald-shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(52,211,153,0.12), transparent);
+  animation: shimmer-sweep 4s ease-in-out infinite;
+}
+
+/* ── Sterling Finance ─────────────────────────────────── */
+@keyframes sterling-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.theme-sterling-cover {
+  background: linear-gradient(135deg, #0c1f26, #0f3545, #134e4a, #0d3d4f, #0c2d3a, #0c1f26);
+  background-size: 300% 300%;
+  animation: sterling-shift 9s ease infinite;
+}
+.theme-sterling-shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; width: 35%;
+  background: linear-gradient(90deg, transparent, rgba(45,212,191,0.12), rgba(56,189,248,0.08), transparent);
+  animation: shimmer-sweep 3.5s ease-in-out infinite;
+}
+
+/* ── Restricted (Banned) ──────────────────────────────── */
+.theme-restricted-cover {
+  background: linear-gradient(135deg, #0c0c0c, #1c1917, #1a0a0a, #1c1917, #0c0c0c);
+  background-size: 200% 200%;
+}
+.theme-restricted-pulse::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(185,28,28,0.06) 40%,
+    rgba(220,38,38,0.04) 60%,
+    transparent 100%
+  );
+  animation: restricted-scan 3s ease-in-out infinite;
+}
+@keyframes restricted-scan {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 1; }
 }
 
 /* animate-in for modals */
@@ -159,4 +302,15 @@
 }
 .animate-in {
   animation: animate-in 0.2s ease-out;
+}
+
+/* Marquee scroll animation for ticker text */
+@keyframes marquee-scroll {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+.marquee-ticker {
+  animation: marquee-scroll 20s linear infinite;
+  white-space: nowrap;
+  display: inline-block;
 }

@@ -30,6 +30,7 @@ import TermsAndConditions from './pages/TermsAndConditions';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import CancellationAndRefunds from './pages/CancellationAndRefunds';
 import ShippingAndDelivery from './pages/ShippingAndDelivery';
+import CertificatePreview from './pages/CertificatePreview';
 
 function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string[] }) {
   const { user, profile, loading } = useAuth();
@@ -92,6 +93,10 @@ export default function App() {
           <Route
             path="/admin/users/:id"
             element={<ProtectedRoute requiredRole={['admin']}><AdminUserProfile /></ProtectedRoute>}
+          />
+          <Route
+            path="/certificate/:userId"
+            element={<ProtectedRoute requiredRole={['admin']}><CertificatePreview /></ProtectedRoute>}
           />
           <Route
             path="/transactions"

@@ -97,6 +97,7 @@ export type Photo = {
   uploaded_by: string | null;
   is_published: boolean;
   created_at: string;
+  link_url: string | null;
 };
 
 export type ForumPost = {

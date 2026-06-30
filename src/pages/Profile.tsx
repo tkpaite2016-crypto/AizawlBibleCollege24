@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   User, Mail, Phone, MapPin, CreditCard as Edit2, Save, X, BookOpen,
   Calendar, Loader, RefreshCw, Upload, Award, FileCheck, GraduationCap,
@@ -25,6 +26,7 @@ type Transaction = {
 
 export default function Profile() {
   const { profile, profileLoading, profileError, refreshProfile } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
     full_name: profile?.full_name ?? '',
@@ -33,6 +35,8 @@ export default function Profile() {
     bio: profile?.bio ?? '',
     avatar_url: profile?.avatar_url ?? '',
     course: profile?.course ?? '',
+    student_year: profile?.student_year ?? '',
+    admission_date: profile?.admission_date ?? '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -41,6 +45,9 @@ export default function Profile() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // Role-based themes
+  const [roleThemes, setRoleThemes] = useState<Record<string, string>>({});
 
   // Payment state
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -65,6 +72,32 @@ export default function Profile() {
   const [notifLoading, setNotifLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // Load role-based themes
+  useEffect(() => {
+    async function loadRoleThemes() {
+      const { data } = await supabase
+        .from('site_settings')
+        .select('setting_key, setting_value')
+        .like('setting_key', 'theme_%');
+      if (data) {
+        const themes: Record<string, string> = {};
+        data.forEach((s) => {
+          themes[s.setting_key] = s.setting_value;
+        });
+        setRoleThemes(themes);
+      }
+    }
+    loadRoleThemes();
+  }, []);
+
+  useEffect(() => {
+    if (searchParams.get('open_profile') === 'true' && profile && !profileLoading) {
+      openEdit();
+      searchParams.delete('open_profile');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [profile, profileLoading, searchParams, setSearchParams]);
+
   function openEdit() {
     setForm({
       full_name: profile?.full_name ?? '',
@@ -73,6 +106,8 @@ export default function Profile() {
       bio: profile?.bio ?? '',
       avatar_url: profile?.avatar_url ?? '',
       course: profile?.course ?? '',
+      student_year: profile?.student_year ?? '',
+      admission_date: profile?.admission_date ?? '',
     });
     setAvatarPreview(null);
     setEditing(true);
@@ -125,6 +160,8 @@ export default function Profile() {
         bio: form.bio,
         avatar_url: avatarUrl,
         course: form.course || null,
+        student_year: form.student_year || null,
+        admission_date: form.admission_date || null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', profile!.id);
@@ -152,8 +189,8 @@ export default function Profile() {
   useEffect(() => {
     if (!profile?.id) return;
     loadNotifications();
+    loadTransactions();
     if (profile.role === 'student') {
-      loadTransactions();
       loadRazorpaySettings();
     }
   }, [profile?.id, profile?.role]);
@@ -379,7 +416,17 @@ export default function Profile() {
   const isPrincipal = profile?.role === 'faculty' && profile?.position === 'Principal';
   const isDesigner = profile?.email === 'tkpaite2016@gmail.com';
   const isBanned = profile?.is_banned ?? false;
-  const theme = getTheme(profile?.profile_theme);
+
+  // Determine theme: user's personal theme > role-based theme > default
+  const userThemeId = profile?.profile_theme;
+  const roleThemeKey = profile?.graduated
+    ? 'theme_graduated'
+    : isBanned
+      ? 'theme_banned'
+      : `theme_role_${profile?.role}`;
+  const roleThemeId = roleThemes[roleThemeKey];
+  const activeThemeId = userThemeId || roleThemeId || 'classic';
+  const theme = getTheme(activeThemeId);
 
   return (
     <div className="page-enter min-h-screen bg-slate-50 py-10 px-4">
@@ -572,18 +619,20 @@ export default function Profile() {
             )}
 
             {/* Payment Section for Students */}
-            {profile.role === 'student' && !profile.graduated && (
+            {profile.role === 'student' && (
               <div className="mt-6 p-5 bg-gradient-to-br from-navy-50 to-gold-50 rounded-xl border border-gold-200">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-semibold text-navy-900 flex items-center gap-2">
                     <IndianRupee className="w-4 h-4 text-gold-600" /> Fee & Mess Payments
                   </h3>
-                  <button
-                    onClick={() => setShowPaymentForm(true)}
-                    className="btn-gold text-xs px-3 py-1.5"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Make Payment
-                  </button>
+                  {!profile.graduated && (
+                    <button
+                      onClick={() => setShowPaymentForm(true)}
+                      className="btn-gold text-xs px-3 py-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Make Payment
+                    </button>
+                  )}
                 </div>
 
                 {transactionsLoading ? (
@@ -949,13 +998,40 @@ export default function Profile() {
               </div>
 
               {profile.role === 'student' && (
-                <div>
-                  <label className="label">Course / Program</label>
-                  <div className="relative">
-                    <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input value={form.course} onChange={(e) => setForm((f) => ({ ...f, course: e.target.value }))} className="input-field pl-10" placeholder="e.g., Bachelor of Theology" />
+                <>
+                  <div>
+                    <label className="label">Course / Program</label>
+                    <div className="relative">
+                      <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input value={form.course} onChange={(e) => setForm((f) => ({ ...f, course: e.target.value }))} className="input-field pl-10" placeholder="e.g., Bachelor of Theology" />
+                    </div>
                   </div>
-                </div>
+                  <div>
+                    <label className="label">Year of Study</label>
+                    <select
+                      value={form.student_year}
+                      onChange={(e) => setForm((f) => ({ ...f, student_year: e.target.value }))}
+                      className="input-field"
+                    >
+                      <option value="">Not specified</option>
+                      <option value="1st_year">1st Year</option>
+                      <option value="2nd_year">2nd Year</option>
+                      <option value="final_year">Final Year</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Date of Admission</label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="date"
+                        value={form.admission_date}
+                        onChange={(e) => setForm((f) => ({ ...f, admission_date: e.target.value }))}
+                        className="input-field pl-10"
+                      />
+                    </div>
+                  </div>
+                </>
               )}
 
               <div>

@@ -34,8 +34,7 @@ export default function UserReg() {
       setError(error.message);
       setLoading(false);
     } else {
-      // Redirect to email confirmation page
-      navigate(`/confirm-email?email=${encodeURIComponent(email)}`);
+      navigate(`/confirm-email?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`);
     }
   }
 

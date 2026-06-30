@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import SignatureCanvas from 'react-signature-canvas';
-import { CheckCircle, AlertCircle, Camera, RotateCcw, Upload, FileText, Download, ExternalLink } from 'lucide-react';
+import { CheckCircle, AlertCircle, Camera, Upload, FileText, Download, ExternalLink, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -83,11 +82,12 @@ export default function ApplicationForm() {
   });
   const [academicRows, setAcademicRows] = useState<AcademicRow[]>([emptyRow(), emptyRow(), emptyRow()]);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const sigRef = useRef<SignatureCanvas>(null);
   const photoRef = useRef<HTMLInputElement>(null);
+  const signatureRef = useRef<HTMLInputElement>(null);
   const [formDownloadUrl, setFormDownloadUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -120,6 +120,14 @@ export default function ApplicationForm() {
     reader.readAsDataURL(file);
   }
 
+  function onSignatureChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => setSignaturePreview(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
   function updateRow(i: number, key: keyof AcademicRow, val: string) {
     setAcademicRows(rows => rows.map((r, idx) => idx === i ? { ...r, [key]: val } : r));
   }
@@ -132,8 +140,6 @@ export default function ApplicationForm() {
       setError('Name and email are required.');
       return;
     }
-
-    const signatureDataUrl = sigRef.current?.isEmpty() ? null : sigRef.current?.toDataURL() ?? null;
 
     setLoading(true);
     const { error: dbErr } = await supabase.from('applications').insert({
@@ -166,7 +172,7 @@ export default function ApplicationForm() {
       can_pay_fees: form.can_pay_fees === 'yes' ? true : form.can_pay_fees === 'no' ? false : null,
       fee_sponsor: form.fee_sponsor || null,
       passport_photo_url: photoPreview,
-      signature_data_url: signatureDataUrl,
+      signature_data_url: signaturePreview,
     });
 
     if (dbErr) {
@@ -188,7 +194,7 @@ export default function ApplicationForm() {
           <p className="text-slate-600 leading-relaxed">
             Thank you for applying to Aizawl Bible College. We will review your application and contact you soon at <strong>{form.email}</strong>.
           </p>
-          <button onClick={() => { setSuccess(false); setForm({ ...emptyForm, email: profile?.email ?? '', full_name: profile?.full_name ?? '' }); setAcademicRows([emptyRow(), emptyRow(), emptyRow()]); setPhotoPreview(null); sigRef.current?.clear(); }} className="btn-primary mt-6">
+          <button onClick={() => { setSuccess(false); setForm({ ...emptyForm, email: profile?.email ?? '', full_name: profile?.full_name ?? '' }); setAcademicRows([emptyRow(), emptyRow(), emptyRow()]); setPhotoPreview(null); setSignaturePreview(null); }} className="btn-primary mt-6">
             Submit Another Application
           </button>
         </div>
@@ -561,21 +567,41 @@ export default function ApplicationForm() {
               </div>
 
               <div className="flex-1">
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="label mb-0">Signature of Applicant</label>
-                  <button type="button" onClick={() => sigRef.current?.clear()}
-                    className="flex items-center gap-1 text-xs text-slate-500 hover:text-red-600 transition-colors">
-                    <RotateCcw className="w-3 h-3" /> Clear
-                  </button>
-                </div>
-                <div className="border-2 border-slate-300 rounded-lg bg-white overflow-hidden" style={{ height: 120 }}>
-                  <SignatureCanvas
-                    ref={sigRef}
-                    penColor="#1e2a8a"
-                    canvasProps={{ className: 'w-full h-full', style: { width: '100%', height: '100%' } }}
+                <label className="label mb-1.5">Signature of Applicant</label>
+                <div className="flex items-start gap-4">
+                  <div
+                    onClick={() => signatureRef.current?.click()}
+                    className="w-48 h-24 border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-navy-400 overflow-hidden bg-slate-50 transition-colors flex-shrink-0"
+                  >
+                    {signaturePreview ? (
+                      <img src={signaturePreview} alt="Signature" className="w-full h-full object-contain" />
+                    ) : (
+                      <div className="text-center p-2">
+                        <Upload className="w-5 h-5 text-slate-400 mx-auto mb-1" />
+                        <p className="text-[10px] text-slate-400 leading-tight">Upload signature image</p>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    ref={signatureRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={onSignatureChange}
+                    className="hidden"
                   />
+                  <div className="flex-1">
+                    {signaturePreview && (
+                      <button
+                        type="button"
+                        onClick={() => setSignaturePreview(null)}
+                        className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1"
+                      >
+                        <X className="w-3 h-3" /> Remove
+                      </button>
+                    )}
+                    <p className="text-xs text-slate-400 mt-1">Upload an image of your signature (PNG, JPG). Max 5MB.</p>
+                  </div>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">Sign using your mouse or finger on a touchscreen.</p>
               </div>
             </div>
           </div>

@@ -22,25 +22,20 @@ const S = StyleSheet.create({
     backgroundColor: IVORY,
   },
 
-  // Watermark container - tiled grid pattern
-  watermarkContainer: {
+  // Background image watermark container with opacity
+  backgroundWatermarkContainer: {
     position: 'absolute',
-    top: -50,
-    left: -100,
-    right: -100,
-    bottom: -50,
-    transform: 'rotate(-30deg)',
+    top: 0,
+    left: 0,
+    width: W,
+    height: H,
     zIndex: 0,
+    opacity: 0.06,
   },
-  watermarkRow: {
-    flexDirection: 'row',
-    flexWrap: 'nowrap',
-  },
-  watermarkText: {
-    fontSize: 24,
-    fontFamily: 'Times-Bold',
-    color: 'rgba(26, 39, 68, 0.06)',
-    marginRight: 40,
+  backgroundWatermark: {
+    width: W,
+    height: H,
+    objectFit: 'cover',
   },
 
   // Outer decorative border
@@ -358,33 +353,12 @@ export function CertificateDocument({
 
   const formattedDate = `${ordinal(day)} ${month}, ${year}`;
 
-  // Generate watermark text rows for tiled grid pattern
-  const watermarkRows = [];
-  const rowCount = 18;
-  const textPerRow = 6;
-
-  for (let row = 0; row < rowCount; row++) {
-    const rowTexts = [];
-    for (let col = 0; col < textPerRow; col++) {
-      rowTexts.push(
-        <Text key={col} style={S.watermarkText}>
-          Aizawl Bible College
-        </Text>
-      );
-    }
-    watermarkRows.push(
-      <View key={row} style={[S.watermarkRow, { marginTop: row === 0 ? 0 : -8 }]}>
-        {rowTexts}
-      </View>
-    );
-  }
-
   return (
     <Document>
       <Page size={[W, H]} style={S.page}>
-        {/* Tiled watermark background - rotated grid */}
-        <View style={S.watermarkContainer}>
-          {watermarkRows}
+        {/* Background watermark image with opacity */}
+        <View style={S.backgroundWatermarkContainer}>
+          <Image src="/CertificateBackground.png" style={S.backgroundWatermark} />
         </View>
 
         {/* Decorative borders */}
