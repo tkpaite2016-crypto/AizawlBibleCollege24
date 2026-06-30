@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Mail, Lock, User, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { BookOpen, Mail, Lock, User, Eye, EyeOff, AlertCircle, GraduationCap, UserCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function UserReg() {
@@ -12,6 +12,7 @@ export default function UserReg() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [accountType, setAccountType] = useState<'standard' | 'student'>('standard');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,7 +29,7 @@ export default function UserReg() {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: { data: { full_name: fullName, role: accountType } },
     });
     if (error) {
       setError(error.message);
@@ -67,6 +68,34 @@ export default function UserReg() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="label">Account Type</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAccountType('standard')}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${accountType === 'standard' ? 'border-navy-700 bg-navy-50 text-navy-900' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                >
+                  <UserCircle className="w-5 h-5" />
+                  <div className="text-left">
+                    <p className="text-sm font-semibold">Standard</p>
+                    <p className="text-xs text-slate-500">General user</p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAccountType('student')}
+                  className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${accountType === 'student' ? 'border-navy-700 bg-navy-50 text-navy-900' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}
+                >
+                  <GraduationCap className="w-5 h-5" />
+                  <div className="text-left">
+                    <p className="text-sm font-semibold">Student</p>
+                    <p className="text-xs text-slate-500">Enrolled student</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+
             <div>
               <label className="label">Full Name</label>
               <div className="relative">

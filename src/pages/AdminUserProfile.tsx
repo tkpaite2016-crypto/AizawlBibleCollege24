@@ -82,6 +82,7 @@ export default function AdminUserProfile() {
   const totalPaid = transactions.reduce((sum, t) => sum + t.amount, 0);
 
   function certificateId() {
+    if (profile?.certificate_id) return profile.certificate_id;
     const year = profile?.completion_date
       ? new Date(profile.completion_date).getFullYear()
       : new Date().getFullYear();

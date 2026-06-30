@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Image, Upload, X, ChevronLeft, ChevronRight, AlertCircle, Loader } from 'lucide-react';
+import { Image, Upload, X, ChevronLeft, ChevronRight, AlertCircle, Loader, ExternalLink } from 'lucide-react';
 import { supabase, Photo } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
-type UploadForm = { title: string; description: string; album: string; files: File[] };
+type UploadForm = { title: string; description: string; album: string; link_url: string; files: File[] };
 
 export default function PhotoGallery() {
   const { profile } = useAuth();
@@ -13,7 +13,7 @@ export default function PhotoGallery() {
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
-  const [uploadForm, setUploadForm] = useState<UploadForm>({ title: '', description: '', album: 'General', files: [] });
+  const [uploadForm, setUploadForm] = useState<UploadForm>({ title: '', description: '', album: 'General', link_url: '', files: [] });
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [uploadError, setUploadError] = useState('');
@@ -72,6 +72,7 @@ export default function PhotoGallery() {
         album: uploadForm.album,
         image_url: urlData.publicUrl,
         uploaded_by: profile?.id,
+        link_url: uploadForm.link_url || null,
       });
 
       if (!dbErr) {
@@ -84,6 +85,7 @@ export default function PhotoGallery() {
           uploaded_by: profile?.id ?? null,
           is_published: true,
           created_at: new Date().toISOString(),
+          link_url: uploadForm.link_url || null,
         });
       }
     }
@@ -96,7 +98,7 @@ export default function PhotoGallery() {
         return updated;
       });
       setShowUpload(false);
-      setUploadForm({ title: '', description: '', album: 'General', files: [] });
+      setUploadForm({ title: '', description: '', album: 'General', link_url: '', files: [] });
     }
 
     setUploading(false);
@@ -207,6 +209,13 @@ export default function PhotoGallery() {
                 {filtered[lightbox].description && <p className="text-slate-400 text-sm mt-1">{filtered[lightbox].description}</p>}
               </div>
             )}
+            {filtered[lightbox].link_url && (
+              <div className="mt-3 text-center">
+                <a href={filtered[lightbox].link_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors">
+                  <ExternalLink className="w-4 h-4" /> View Full Album / Video
+                </a>
+              </div>
+            )}
             <p className="text-slate-500 text-xs text-center mt-2">{lightbox + 1} / {filtered.length}</p>
           </div>
           <button
@@ -276,6 +285,11 @@ export default function PhotoGallery() {
               <div>
                 <label className="label">Album</label>
                 <input value={uploadForm.album} onChange={(e) => setUploadForm((f) => ({ ...f, album: e.target.value }))} className="input-field" placeholder="e.g., Graduation 2024" />
+              </div>
+              <div>
+                <label className="label">Link URL (optional)</label>
+                <input type="url" value={uploadForm.link_url} onChange={(e) => setUploadForm((f) => ({ ...f, link_url: e.target.value }))} className="input-field" placeholder="https://facebook.com/... or https://youtube.com/..." />
+                <p className="text-xs text-slate-400 mt-1">Link to Facebook album or YouTube video for more photos/videos</p>
               </div>
               <button type="submit" disabled={uploading || uploadForm.files.length === 0} className="btn-primary w-full justify-center">
                 {uploading ? (

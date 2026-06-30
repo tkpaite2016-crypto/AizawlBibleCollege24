@@ -4,7 +4,7 @@ import {
   User, Mail, Phone, MapPin, CreditCard as Edit2, Save, X, BookOpen,
   Calendar, Loader, RefreshCw, Upload, Award, FileCheck, GraduationCap,
   CreditCard, IndianRupee, Plus, CheckCircle, AlertCircle, Sparkles, Palette,
-  Ban, Bell, CheckCheck, Clock,
+  Ban, Bell, CheckCheck, Clock, Eye, EyeOff,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Notification } from '../lib/supabase';
@@ -53,6 +53,7 @@ export default function Profile() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [txVisibilitySaving, setTxVisibilitySaving] = useState(false);
   const [paymentForm, setPaymentForm] = useState({
     amount: '',
     payment_type: 'fee' as 'fee' | 'mess',
@@ -620,7 +621,30 @@ export default function Profile() {
 
             {/* Payment Section for Students */}
             {profile.role === 'student' && (
-              <div className="mt-6 p-5 bg-gradient-to-br from-navy-50 to-gold-50 rounded-xl border border-gold-200">
+              <>
+              <div className="mt-6 p-4 bg-white rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={async () => { setTxVisibilitySaving(true); const newVal = !profile.show_transactions_public; await supabase.from('profiles').update({ show_transactions_public: newVal }).eq('id', profile.id); await refreshProfile(); setTxVisibilitySaving(false); }}
+                      disabled={txVisibilitySaving}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${profile.show_transactions_public ? 'bg-navy-700' : 'bg-slate-300'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${profile.show_transactions_public ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                    <div>
+                      <p className="text-sm font-medium text-slate-700">Transaction History Visibility</p>
+                      <p className="text-xs text-slate-400">{profile.show_transactions_public ? 'Public — everyone can see your transactions' : 'Private — only you and admins can see'}</p>
+                    </div>
+                    {txVisibilitySaving && <Loader className="w-4 h-4 text-slate-400 animate-spin" />}
+                  </div>
+                  <div className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg ${profile.show_transactions_public ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
+                    {profile.show_transactions_public ? <><Eye className="w-3.5 h-3.5" /> Public</> : <><EyeOff className="w-3.5 h-3.5" /> Private</>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 p-5 bg-gradient-to-br from-navy-50 to-gold-50 rounded-xl border border-gold-200">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-semibold text-navy-900 flex items-center gap-2">
                     <IndianRupee className="w-4 h-4 text-gold-600" /> Fee & Mess Payments
@@ -674,6 +698,7 @@ export default function Profile() {
                   </div>
                 )}
               </div>
+              </>
             )}
 
             {/* Contact details */}

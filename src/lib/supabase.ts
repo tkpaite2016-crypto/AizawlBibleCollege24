@@ -32,6 +32,8 @@ export type Profile = {
   position: string | null;
   is_banned: boolean;
   profile_theme: string | null;
+  show_transactions_public: boolean;
+  certificate_id: string | null;
 };
 
 export type Notification = {

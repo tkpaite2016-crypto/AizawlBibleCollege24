@@ -72,7 +72,7 @@ export default function CertificatePreview() {
   }
 
   const certYear = user.completion_date ? new Date(user.completion_date).getFullYear() : new Date().getFullYear();
-  const certificateId = `ABC-${certYear}-${user.id.slice(0, 8).toUpperCase()}`;
+  const certificateId = user.certificate_id || `ABC-${certYear}-${user.id.slice(0, 8).toUpperCase()}`;
 
   return (
     <div className="min-h-screen bg-slate-100">

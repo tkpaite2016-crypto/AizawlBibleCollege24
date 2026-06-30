@@ -1,20 +1,18 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  LayoutDashboard, Users, Bell, BookOpen, Image, FileText,
-  Plus, Trash2, CreditCard as EditIcon, Check, X, AlertCircle,
+  LayoutDashboard, Users, Bell, BookOpen, FileText,
+  Plus, Trash2, Check, X, AlertCircle,
   MessageSquare, Upload, Loader, Mail, GraduationCap, Award,
   ShieldCheck, UserCheck, AlertTriangle, Pencil, Download,
   CreditCard, Settings, Save, Ban, Shield, Palette, Search,
-  ExternalLink, Eye, EyeOff, Link as LinkIcon,
+  ExternalLink, Eye, EyeOff,
 } from 'lucide-react';
 import { supabase, Profile, Notice, Teacher, SiteSetting, ContactMessage, Download as DownloadType, Photo } from '../lib/supabase';
 import { THEMES } from '../lib/themes';
 import { useAuth } from '../contexts/AuthContext';
-import { CertificateDocument } from '../components/CertificateDocument';
-import { PDFDownloadLink } from '@react-pdf/renderer';
 
-type Tab = 'overview' | 'users' | 'students' | 'graduated' | 'faculty' | 'admins' | 'notices' | 'teachers' | 'applications' | 'downloads' | 'gallery' | 'settings' | 'payment' | 'messages';
+type Tab = 'overview' | 'users' | 'students' | 'graduated' | 'faculty' | 'admins' | 'notices' | 'applications' | 'downloads' | 'certificates' | 'settings' | 'payment' | 'messages';
 
 type GraduationForm = {
   userId: string;
@@ -81,11 +79,17 @@ export default function AdminDashboard() {
   const [roleThemesSaveSuccess, setRoleThemesSaveSuccess] = useState(false);
 
   // Transaction visibility
-  const [showTransactionsPublic, setShowTransactionsPublic] = useState(false);
-  const [transactionVisibilitySaving, setTransactionVisibilitySaving] = useState(false);
+  // Transaction visibility moved to user Profile page
 
   // Graduated tab search
   const [graduatedSearch, setGraduatedSearch] = useState('');
+
+  // Certificate management
+  const [certSearch, setCertSearch] = useState('');
+  const [certSearchField, setCertSearchField] = useState<'all' | 'name' | 'year' | 'id' | 'date'>('all');
+  const [certEditing, setCertEditing] = useState<any | null>(null);
+  const [certEditForm, setCertEditForm] = useState({ certificate_id: '', course: '', completion_date: '', pata_reg_no: '' });
+  const [certSaving, setCertSaving] = useState(false);
 
   // Student search
   const [studentSearch, setStudentSearch] = useState('');
@@ -125,7 +129,6 @@ export default function AdminDashboard() {
   });
   const [savingTeacher, setSavingTeacher] = useState(false);
   const [teacherPhotoUploading, setTeacherPhotoUploading] = useState(false);
-  const [facultyEditTarget, setFacultyEditTarget] = useState<Profile | null>(null);
 
   // Download form
   const [showDownloadForm, setShowDownloadForm] = useState(false);
@@ -134,18 +137,9 @@ export default function AdminDashboard() {
   });
   const [downloadFile, setDownloadFile] = useState<File | null>(null);
   const [savingDownload, setSavingDownload] = useState(false);
-
-  // Gallery
-  const [galleryLinkEditing, setGalleryLinkEditing] = useState<string | null>(null);
-  const [galleryLinkValue, setGalleryLinkValue] = useState('');
-  const [galleryLinkSaving, setGalleryLinkSaving] = useState(false);
-  const [galleryFilter, setGalleryFilter] = useState('All');
-
-  // Gallery upload form
-  const [showGalleryUpload, setShowGalleryUpload] = useState(false);
-  const [galleryUploadForm, setGalleryUploadForm] = useState({ title: '', album: 'General', link_url: '' });
-  const [galleryUploadFile, setGalleryUploadFile] = useState<File | null>(null);
-  const [galleryUploading, setGalleryUploading] = useState(false);
+  const [viewingDownload, setViewingDownload] = useState<DownloadType | null>(null);
+  const [downloadEditForm, setDownloadEditForm] = useState({ title: '', description: '', category: 'general' as DownloadType['category'], semester: '', is_active: true });
+  const [downloadEditSaving, setDownloadEditSaving] = useState(false);
 
   // Board members
   const [showBoardMemberForm, setShowBoardMemberForm] = useState(false);
@@ -228,12 +222,11 @@ export default function AdminDashboard() {
 
     // Load site settings values
     const getSetting = (key: string) => s.find((x) => x.setting_key === key)?.setting_value ?? '';
-    setHeroOpacity(parseFloat(getSetting('hero_opacity') || '0.5'));
+    setHeroOpacity(parseFloat(getSetting('home_hero_opacity') || '0.5'));
     setGreetingEnabled(getSetting('principal_greeting_enabled') !== 'false');
     setGreetingName(getSetting('principal_greeting_name'));
     setGreetingTitle(getSetting('principal_greeting_title'));
     setGreetingImageUrl(getSetting('principal_greeting_image'));
-    setShowTransactionsPublic(getSetting('show_transactions_public') === 'true');
 
     // Razorpay
     setRazorpayEnabled(getSetting('razorpay_enabled') === 'true');
@@ -293,12 +286,52 @@ export default function AdminDashboard() {
     setTimeout(() => setRoleThemesSaveSuccess(false), 3000);
   }
 
-  // ── Transaction visibility ───────────────────────────────────
-  async function saveTransactionVisibility(val: boolean) {
-    setTransactionVisibilitySaving(true);
-    await supabase.from('site_settings').update({ setting_value: val ? 'true' : 'false' }).eq('setting_key', 'show_transactions_public');
-    setShowTransactionsPublic(val);
-    setTransactionVisibilitySaving(false);
+  // ── Certificate management ───────────────────────────────────
+  function getCertificateId(u: any): string {
+    if (u.certificate_id) return u.certificate_id;
+    const year = u.completion_date ? new Date(u.completion_date).getFullYear() : new Date().getFullYear();
+    return `ABC-${year}-${u.id.slice(0, 8).toUpperCase()}`;
+  }
+
+  function getCertYear(u: any): number {
+    return u.completion_date ? new Date(u.completion_date).getFullYear() : new Date().getFullYear();
+  }
+
+  const filteredCerts = users.filter((u) => u.graduated).filter((u) => {
+    if (!certSearch.trim()) return true;
+    const q = certSearch.toLowerCase().trim();
+    const certId = getCertificateId(u).toLowerCase();
+    const year = String(getCertYear(u));
+    const dateStr = u.completion_date ? new Date(u.completion_date).toLocaleDateString('en-IN') : '';
+    switch (certSearchField) {
+      case 'name': return (u.full_name ?? '').toLowerCase().includes(q);
+      case 'year': return year.includes(q);
+      case 'id': return certId.includes(q);
+      case 'date': return dateStr.includes(q);
+      default: return (u.full_name ?? '').toLowerCase().includes(q) || year.includes(q) || certId.includes(q) || dateStr.includes(q) || (u.email ?? '').toLowerCase().includes(q);
+    }
+  });
+
+  async function saveCertEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!certEditing) return;
+    setCertSaving(true);
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({
+        certificate_id: certEditForm.certificate_id || null,
+        course: certEditForm.course || null,
+        completion_date: certEditForm.completion_date || null,
+        pata_reg_no: certEditForm.pata_reg_no || null,
+      })
+      .eq('id', certEditing.id)
+      .select()
+      .single();
+    if (!error && data) {
+      setUsers((prev) => prev.map((u) => u.id === data.id ? data : u));
+      setCertEditing(null);
+    }
+    setCertSaving(false);
   }
 
   // ── Site image upload ────────────────────────────────────────
@@ -321,7 +354,17 @@ export default function AdminDashboard() {
   // ── Hero opacity ─────────────────────────────────────────────
   async function saveHeroOpacity() {
     setHeroOpacitySaving(true);
-    await supabase.from('site_settings').update({ setting_value: String(heroOpacity) }).eq('setting_key', 'hero_opacity');
+    const { data: existing } = await supabase.from('site_settings').select('id').eq('setting_key', 'home_hero_opacity').maybeSingle();
+    if (existing) {
+      await supabase.from('site_settings').update({ setting_value: String(heroOpacity) }).eq('setting_key', 'home_hero_opacity');
+    } else {
+      await supabase.from('site_settings').insert({ setting_key: 'home_hero_opacity', setting_value: String(heroOpacity) });
+    }
+    setSiteSettings((prev) => {
+      const exists = prev.find((s) => s.setting_key === 'home_hero_opacity');
+      if (exists) return prev.map((s) => s.setting_key === 'home_hero_opacity' ? { ...s, setting_value: String(heroOpacity) } : s);
+      return [...prev, { id: crypto.randomUUID(), setting_key: 'home_hero_opacity', setting_value: String(heroOpacity), created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as SiteSetting];
+    });
     setHeroOpacitySaving(false);
   }
 
@@ -532,9 +575,10 @@ export default function AdminDashboard() {
   async function uploadTeacherPhoto(file: File): Promise<string | null> {
     setTeacherPhotoUploading(true);
     const ext = file.name.split('.').pop();
-    const { error } = await supabase.storage.from('photos').upload(`faculty/${Date.now()}.${ext}`, file, { upsert: true });
+    const path = `faculty/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('photos').upload(path, file, { upsert: true });
     if (error) { setTeacherPhotoUploading(false); return null; }
-    const { data: { publicUrl } } = supabase.storage.from('photos').getPublicUrl(`faculty/${Date.now()}.${ext}`);
+    const { data: { publicUrl } } = supabase.storage.from('photos').getPublicUrl(path);
     setTeacherPhotoUploading(false);
     return publicUrl;
   }
@@ -604,63 +648,6 @@ export default function AdminDashboard() {
   async function deleteDownload(id: string) {
     await supabase.from('downloads').delete().eq('id', id);
     setDownloads((prev) => prev.filter((d) => d.id !== id));
-    setConfirmConfig(null);
-  }
-
-  // ── Gallery ──────────────────────────────────────────────────
-  async function saveGalleryLink(photoId: string) {
-    setGalleryLinkSaving(true);
-    await supabase.from('photos').update({ link_url: galleryLinkValue || null }).eq('id', photoId);
-    setPhotos((prev) => prev.map((p) => p.id === photoId ? { ...p, link_url: galleryLinkValue || null } : p));
-    setGalleryLinkEditing(null);
-    setGalleryLinkValue('');
-    setGalleryLinkSaving(false);
-  }
-
-  async function uploadGalleryPhoto() {
-    if (!galleryUploadFile) return;
-    setGalleryUploading(true);
-    try {
-      const ext = galleryUploadFile.name.split('.').pop();
-      const fileName = `gallery/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from('photos').upload(fileName, galleryUploadFile, { upsert: true });
-      if (uploadError) throw uploadError;
-      const { data: { publicUrl } } = supabase.storage.from('photos').getPublicUrl(fileName);
-
-      const { data, error: insertError } = await supabase
-        .from('photos')
-        .insert({
-          title: galleryUploadForm.title || null,
-          album: galleryUploadForm.album || 'General',
-          image_url: publicUrl,
-          link_url: galleryUploadForm.link_url || null,
-          is_published: true,
-          uploaded_by: adminProfile?.id,
-        })
-        .select()
-        .single();
-
-      if (insertError) throw insertError;
-      if (data) setPhotos((prev) => [data, ...prev]);
-
-      setShowGalleryUpload(false);
-      setGalleryUploadForm({ title: '', album: 'General', link_url: '' });
-      setGalleryUploadFile(null);
-    } catch (err) {
-      console.error('Gallery upload error:', err);
-    } finally {
-      setGalleryUploading(false);
-    }
-  }
-
-  async function togglePhotoPublished(photo: Photo) {
-    const { data } = await supabase.from('photos').update({ is_published: !photo.is_published }).eq('id', photo.id).select().single();
-    if (data) setPhotos((prev) => prev.map((p) => p.id === photo.id ? data : p));
-  }
-
-  async function deletePhoto(id: string) {
-    await supabase.from('photos').delete().eq('id', id);
-    setPhotos((prev) => prev.filter((p) => p.id !== id));
     setConfirmConfig(null);
   }
 
@@ -850,7 +837,7 @@ export default function AdminDashboard() {
                   {new Date(u.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-1 flex-wrap">
+                  <div className="flex items-center gap-1 flex-nowrap whitespace-nowrap">
                     {u.role === 'student' && !u.graduated && (
                       <button onClick={() => openGraduationModal(u)}
                         className="inline-flex items-center justify-center w-8 h-8 bg-gold-100 text-gold-700 rounded-lg hover:bg-gold-200 transition-colors" title="Graduate">
@@ -904,13 +891,12 @@ export default function AdminDashboard() {
     { id: 'users', label: 'Users', icon: Users },
     { id: 'students', label: 'Students', icon: UserCheck },
     { id: 'graduated', label: 'Graduated', icon: GraduationCap },
-    { id: 'faculty', label: 'Faculty Users', icon: BookOpen },
+    { id: 'faculty', label: 'Faculty', icon: BookOpen },
     { id: 'admins', label: 'Admins', icon: ShieldCheck },
     { id: 'notices', label: 'Notices', icon: Bell },
-    { id: 'teachers', label: 'Faculty Profiles', icon: BookOpen },
     { id: 'applications', label: 'Applications', icon: FileText },
     { id: 'downloads', label: 'Downloads', icon: Download },
-    { id: 'gallery', label: 'Gallery', icon: Image },
+    { id: 'certificates', label: 'Certificates', icon: Award },
     { id: 'settings', label: 'Site Images', icon: Settings },
     { id: 'payment', label: 'Payment', icon: CreditCard },
     { id: 'messages', label: 'Messages', icon: MessageSquare, badge: stats.unread_messages },
@@ -935,8 +921,7 @@ export default function AdminDashboard() {
   const facultyUsers = users.filter((u) => u.role === 'faculty');
 
   // ── Gallery helpers ──────────────────────────────────────────
-  const galleryAlbums = ['All', ...Array.from(new Set(photos.map((p) => p.album ?? 'General')))];
-  const filteredPhotos = galleryFilter === 'All' ? photos : photos.filter((p) => (p.album ?? 'General') === galleryFilter);
+  // Gallery tab removed — managed from public PhotoGallery page
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -1152,104 +1137,229 @@ export default function AdminDashboard() {
 
           {/* FACULTY USERS */}
           {tab === 'faculty' && (
-            <div className="card overflow-hidden">
-              <div className="p-4 border-b border-slate-100">
-                <h2 className="font-serif font-bold text-navy-900">Faculty Users ({facultyUsers.length})</h2>
-                <p className="text-slate-500 text-sm mt-1">Users with faculty role from the Users tab</p>
-              </div>
-              {facultyUsers.length === 0 ? (
-                <div className="py-16 text-center">
-                  <BookOpen className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-                  <p className="text-slate-400">No faculty users found.</p>
-                  <p className="text-sm text-slate-400 mt-1">Set a user's role to "Faculty" in the Users tab to see them here.</p>
+            <div className="space-y-6">
+              {/* Faculty Users */}
+              <div className="card overflow-hidden">
+                <div className="p-4 border-b border-slate-100">
+                  <h2 className="font-serif font-bold text-navy-900">Faculty Users ({facultyUsers.length})</h2>
+                  <p className="text-slate-500 text-sm mt-1">Users with faculty role from the Users tab</p>
                 </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50 text-slate-600 uppercase text-xs tracking-wide">
-                      <tr>
-                        <th className="px-4 py-3 text-left">Name / Email</th>
-                        <th className="px-4 py-3 text-left">Status</th>
-                        <th className="px-4 py-3 text-left">Theme</th>
-                        <th className="px-4 py-3 text-left">Qualification</th>
-                        <th className="px-4 py-3 text-left">Subject</th>
-                        <th className="px-4 py-3 text-left">Joined</th>
-                        <th className="px-4 py-3 text-left">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {facultyUsers.map((u) => (
-                        <tr key={u.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                                {u.avatar_url ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" /> : (
-                                  <span className="text-xs font-bold text-emerald-700">{(u.full_name ?? u.email ?? 'U')[0].toUpperCase()}</span>
-                                )}
-                              </div>
-                              <div>
-                                <Link to={`/admin/users/${u.id}`} className="font-medium text-navy-900 hover:text-gold-600 transition-colors">
-                                  {u.full_name || '—'}
-                                </Link>
-                                <p className="text-xs text-slate-500">{u.email}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            {u.is_banned ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
-                                <Ban className="w-3 h-3" /> Banned
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                                <Shield className="w-3 h-3" /> Active
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            <select
-                              value={getEffectiveTheme(u)}
-                              onChange={(e) => updateUserTheme(u.id, e.target.value)}
-                              className="text-xs border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-navy-500 bg-white">
-                              {THEMES.map((t) => (
-                                <option key={t.id} value={t.id}>{t.label}{t.animated ? ' ✨' : ''}</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-slate-700">{u.qualification || '—'}</td>
-                          <td className="px-4 py-3 text-sm text-slate-700">{u.subject_in_charge || '—'}</td>
-                          <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
-                            {new Date(u.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1">
-                              {u.is_banned ? (
-                                <button onClick={() => unbanUser(u.id)}
-                                  className="inline-flex items-center justify-center w-8 h-8 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors" title="Unban User">
-                                  <Shield className="w-4 h-4" />
-                                </button>
-                              ) : (
-                                <button onClick={() => confirmBanUser(u)}
-                                  className="inline-flex items-center justify-center w-8 h-8 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors" title="Ban User">
-                                  <Ban className="w-4 h-4" />
-                                </button>
-                              )}
-                              <Link to={`/admin/users/${u.id}`}
-                                className="inline-flex items-center justify-center w-8 h-8 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors" title="View Profile">
-                                <Users className="w-4 h-4" />
-                              </Link>
-                              <button onClick={() => confirmDeleteUser(u)}
-                                className="inline-flex items-center justify-center w-8 h-8 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors" title="Delete User">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
+                {facultyUsers.length === 0 ? (
+                  <div className="py-16 text-center">
+                    <BookOpen className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+                    <p className="text-slate-400">No faculty users found.</p>
+                    <p className="text-sm text-slate-400 mt-1">Set a user's role to "Faculty" in the Users tab to see them here.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 text-slate-600 uppercase text-xs tracking-wide">
+                        <tr>
+                          <th className="px-4 py-3 text-left">Name / Email</th>
+                          <th className="px-4 py-3 text-left">Status</th>
+                          <th className="px-4 py-3 text-left">Theme</th>
+                          <th className="px-4 py-3 text-left">Qualification</th>
+                          <th className="px-4 py-3 text-left">Subject</th>
+                          <th className="px-4 py-3 text-left">Joined</th>
+                          <th className="px-4 py-3 text-left">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {facultyUsers.map((u) => (
+                          <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                  {u.avatar_url ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" /> : (
+                                    <span className="text-xs font-bold text-emerald-700">{(u.full_name ?? u.email ?? 'U')[0].toUpperCase()}</span>
+                                  )}
+                                </div>
+                                <div>
+                                  <Link to={`/admin/users/${u.id}`} className="font-medium text-navy-900 hover:text-gold-600 transition-colors">
+                                    {u.full_name || '—'}
+                                  </Link>
+                                  <p className="text-xs text-slate-500">{u.email}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              {u.is_banned ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                                  <Ban className="w-3 h-3" /> Banned
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                                  <Shield className="w-3 h-3" /> Active
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <select
+                                value={getEffectiveTheme(u)}
+                                onChange={(e) => updateUserTheme(u.id, e.target.value)}
+                                className="text-xs border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-navy-500 bg-white">
+                                {THEMES.map((t) => (
+                                  <option key={t.id} value={t.id}>{t.label}{t.animated ? ' ✨' : ''}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-slate-700">{u.qualification || '—'}</td>
+                            <td className="px-4 py-3 text-sm text-slate-700">{u.subject_in_charge || '—'}</td>
+                            <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
+                              {new Date(u.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1 flex-nowrap whitespace-nowrap">
+                                {u.is_banned ? (
+                                  <button onClick={() => unbanUser(u.id)}
+                                    className="inline-flex items-center justify-center w-8 h-8 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors" title="Unban User">
+                                    <Shield className="w-4 h-4" />
+                                  </button>
+                                ) : (
+                                  <button onClick={() => confirmBanUser(u)}
+                                    className="inline-flex items-center justify-center w-8 h-8 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors" title="Ban User">
+                                    <Ban className="w-4 h-4" />
+                                  </button>
+                                )}
+                                <Link to={`/admin/users/${u.id}`}
+                                  className="inline-flex items-center justify-center w-8 h-8 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors" title="View Profile">
+                                  <Users className="w-4 h-4" />
+                                </Link>
+                                <button onClick={() => confirmDeleteUser(u)}
+                                  className="inline-flex items-center justify-center w-8 h-8 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors" title="Delete User">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Former Teachers / Faculty Profiles */}
+              <div className="card overflow-hidden">
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                  <div>
+                    <h2 className="font-serif font-bold text-navy-900">Former Teachers ({teachers.length})</h2>
+                    <p className="text-slate-500 text-sm mt-1">Faculty profiles displayed on the public Teachers page</p>
+                  </div>
+                  <button onClick={() => setShowTeacherForm(true)} className="btn-primary"><Plus className="w-4 h-4" /> Add Faculty</button>
                 </div>
-              )}
+                {showTeacherForm && (
+                  <div className="p-6 border-b border-slate-100">
+                    <h3 className="font-serif font-bold text-navy-900 mb-4">Add Faculty Member</h3>
+                    <form onSubmit={saveTeacher} className="space-y-4">
+                      <div><label className="label">Full Name *</label><input value={teacherForm.full_name} onChange={(e) => setTeacherForm((f) => ({ ...f, full_name: e.target.value }))} className="input-field" required /></div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div><label className="label">Qualification</label><input value={teacherForm.qualification} onChange={(e) => setTeacherForm((f) => ({ ...f, qualification: e.target.value }))} className="input-field" /></div>
+                        <div><label className="label">Subject in Charge</label><input value={teacherForm.subject_in_charge} onChange={(e) => setTeacherForm((f) => ({ ...f, subject_in_charge: e.target.value }))} className="input-field" /></div>
+                      </div>
+                      <div><label className="label">Address</label><input value={teacherForm.address} onChange={(e) => setTeacherForm((f) => ({ ...f, address: e.target.value }))} className="input-field" /></div>
+                      <div><label className="label">Bio</label><textarea value={teacherForm.bio} onChange={(e) => setTeacherForm((f) => ({ ...f, bio: e.target.value }))} className="input-field min-h-20 resize-none" /></div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div><label className="label">Joined</label><input type="date" value={teacherForm.joined_at} onChange={(e) => setTeacherForm((f) => ({ ...f, joined_at: e.target.value }))} className="input-field" /></div>
+                        <div><label className="label">Display Order</label><input type="number" value={teacherForm.display_order} onChange={(e) => setTeacherForm((f) => ({ ...f, display_order: parseInt(e.target.value) || 0 }))} className="input-field" /></div>
+                      </div>
+                      <div>
+                        <label className="label">Photo</label>
+                        <div className="flex items-center gap-3">
+                          <label className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer border border-slate-300 w-fit ${teacherPhotoUploading ? 'text-slate-400 cursor-not-allowed' : 'text-slate-700 hover:bg-slate-50'}`}>
+                            {teacherPhotoUploading ? <><Loader className="w-4 h-4 animate-spin" /> Uploading...</> : <><Upload className="w-4 h-4" /> Upload Photo</>}
+                            <input type="file" accept="image/*" className="hidden" disabled={teacherPhotoUploading} onChange={async (e) => { const f = e.target.files?.[0]; if (f) { const url = await uploadTeacherPhoto(f); if (url) setTeacherForm((tf) => ({ ...tf, photo_url: url })); } }} />
+                          </label>
+                          {teacherForm.photo_url && (
+                            <div className="flex items-center gap-2">
+                              <img src={teacherForm.photo_url} alt="Preview" className="w-10 h-10 rounded-full object-cover border border-slate-200" />
+                              <button type="button" onClick={() => setTeacherForm((tf) => ({ ...tf, photo_url: '' }))} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2"><input type="checkbox" id="is_current" checked={teacherForm.is_current} onChange={(e) => setTeacherForm((f) => ({ ...f, is_current: e.target.checked }))} className="rounded" /><label htmlFor="is_current" className="text-sm text-slate-700">Currently Active</label></div>
+                      <div className="flex gap-3 pt-2">
+                        <button type="submit" disabled={savingTeacher} className="btn-primary">{savingTeacher ? <><Loader className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Add Faculty</>}</button>
+                        <button type="button" onClick={() => setShowTeacherForm(false)} className="btn-secondary">Cancel</button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+                {teachers.length === 0 ? (
+                  <div className="py-16 text-center text-slate-400"><BookOpen className="w-10 h-10 mx-auto mb-3 text-slate-300" /><p>No faculty members yet.</p></div>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {teachers.map((t) => (
+                      <div key={t.id} className="p-4 flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-slate-200 flex-shrink-0 overflow-hidden">
+                          {t.photo_url ? <img src={t.photo_url} alt="" className="w-full h-full object-cover" /> : <BookOpen className="w-5 h-5 text-slate-400 m-auto mt-2.5" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-navy-900">{t.full_name}</p>
+                          <p className="text-sm text-slate-500">{t.qualification || '—'} {t.subject_in_charge ? `· ${t.subject_in_charge}` : ''}</p>
+                          <p className="text-xs text-slate-400">{t.is_current ? 'Current' : 'Former'}</p>
+                        </div>
+                        <button onClick={() => setConfirmConfig({ title: 'Delete Faculty', message: `Delete ${t.full_name}?`, confirmLabel: 'Delete', danger: true, onConfirm: () => deleteTeacher(t.id) })}
+                          className="p-1.5 text-red-500 hover:text-red-700 rounded hover:bg-red-50 transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Board of Management */}
+              <div className="card p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-serif font-bold text-navy-900">Board of Management</h2>
+                  <button onClick={() => setShowBoardMemberForm(true)} className="btn-primary"><Plus className="w-4 h-4" /> Add Member</button>
+                </div>
+                {showBoardMemberForm && (
+                  <form onSubmit={saveBoardMember} className="border border-slate-200 rounded-xl p-4 mb-4 space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div><label className="label text-xs">Full Name *</label><input value={boardMemberForm.name} onChange={(e) => setBoardMemberForm((f) => ({ ...f, name: e.target.value }))} className="input-field" required /></div>
+                      <div><label className="label text-xs">Designation</label><input value={boardMemberForm.designation} onChange={(e) => setBoardMemberForm((f) => ({ ...f, designation: e.target.value }))} className="input-field" /></div>
+                      <div><label className="label text-xs">Display Order</label><input type="number" value={boardMemberForm.display_order} onChange={(e) => setBoardMemberForm((f) => ({ ...f, display_order: parseInt(e.target.value) || 0 }))} className="input-field" /></div>
+                      <div>
+                        <label className="label text-xs">Photo</label>
+                        <label className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer w-fit border border-slate-300 ${boardPhotoUploading ? 'text-slate-400 cursor-not-allowed' : 'text-slate-700 hover:bg-slate-50'}`}>
+                          {boardPhotoUploading ? <><Loader className="w-4 h-4 animate-spin" /> Uploading...</> : <><Upload className="w-4 h-4" /> Photo</>}
+                          <input type="file" accept="image/*" className="hidden" disabled={boardPhotoUploading} onChange={async (e) => { const f = e.target.files?.[0]; if (f) { const url = await uploadBoardPhoto(f); if (url) setBoardMemberForm((bf) => ({ ...bf, photo_url: url })); } }} />
+                        </label>
+                        {boardMemberForm.photo_url && <p className="text-xs text-green-600 mt-1">Photo uploaded</p>}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button type="submit" disabled={savingBoardMember} className="btn-primary text-sm">{savingBoardMember ? 'Saving...' : 'Add Member'}</button>
+                      <button type="button" onClick={() => setShowBoardMemberForm(false)} className="btn-secondary text-sm">Cancel</button>
+                    </div>
+                  </form>
+                )}
+                <div className="divide-y divide-slate-100">
+                  {boardMembers.map((b) => (
+                    <div key={b.id} className="py-3 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-200 flex-shrink-0 overflow-hidden">
+                        {b.photo_url ? <img src={b.photo_url} alt="" className="w-full h-full object-cover" /> : <Award className="w-5 h-5 text-slate-400 m-auto mt-2.5" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-navy-900 text-sm">{b.name}</p>
+                        <p className="text-xs text-slate-500">{b.designation || '—'}</p>
+                      </div>
+                      <button onClick={() => { setEditingBoardMember(b); setBoardEditForm({ name: b.name, designation: b.designation ?? '', photo_url: b.photo_url ?? '', display_order: b.display_order ?? 0 }); }}
+                        className="p-1.5 text-navy-600 hover:text-navy-800 rounded hover:bg-navy-50 transition-colors">
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => setConfirmConfig({ title: 'Delete Board Member', message: `Delete ${b.name}?`, confirmLabel: 'Delete', danger: true, onConfirm: () => deleteBoardMember(b.id) })}
+                        className="p-1.5 text-red-500 hover:text-red-700 rounded hover:bg-red-50 transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {boardMembers.length === 0 && <p className="text-sm text-slate-400 py-4 text-center">No board members added yet.</p>}
+                </div>
+              </div>
             </div>
           )}
 
@@ -1350,61 +1460,6 @@ export default function AdminDashboard() {
           )}
 
           {/* FACULTY */}
-          {tab === 'teachers' && (
-            <div className="space-y-4">
-              <div className="flex justify-end">
-                <button onClick={() => setShowTeacherForm(true)} className="btn-primary"><Plus className="w-4 h-4" /> Add Faculty</button>
-              </div>
-              {showTeacherForm && (
-                <div className="card p-6">
-                  <h2 className="font-serif font-bold text-navy-900 mb-4">Add Faculty Member</h2>
-                  <form onSubmit={saveTeacher} className="space-y-4">
-                    <div><label className="label">Full Name *</label><input value={teacherForm.full_name} onChange={(e) => setTeacherForm((f) => ({ ...f, full_name: e.target.value }))} className="input-field" required /></div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><label className="label">Qualification</label><input value={teacherForm.qualification} onChange={(e) => setTeacherForm((f) => ({ ...f, qualification: e.target.value }))} className="input-field" /></div>
-                      <div><label className="label">Subject in Charge</label><input value={teacherForm.subject_in_charge} onChange={(e) => setTeacherForm((f) => ({ ...f, subject_in_charge: e.target.value }))} className="input-field" /></div>
-                    </div>
-                    <div><label className="label">Address</label><input value={teacherForm.address} onChange={(e) => setTeacherForm((f) => ({ ...f, address: e.target.value }))} className="input-field" /></div>
-                    <div><label className="label">Bio</label><textarea value={teacherForm.bio} onChange={(e) => setTeacherForm((f) => ({ ...f, bio: e.target.value }))} className="input-field min-h-20 resize-none" /></div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><label className="label">Joined</label><input type="date" value={teacherForm.joined_at} onChange={(e) => setTeacherForm((f) => ({ ...f, joined_at: e.target.value }))} className="input-field" /></div>
-                      <div><label className="label">Display Order</label><input type="number" value={teacherForm.display_order} onChange={(e) => setTeacherForm((f) => ({ ...f, display_order: parseInt(e.target.value) || 0 }))} className="input-field" /></div>
-                    </div>
-                    <div className="flex items-center gap-2"><input type="checkbox" id="is_current" checked={teacherForm.is_current} onChange={(e) => setTeacherForm((f) => ({ ...f, is_current: e.target.checked }))} className="rounded" /><label htmlFor="is_current" className="text-sm text-slate-700">Currently Active</label></div>
-                    <div className="flex gap-3 pt-2">
-                      <button type="submit" disabled={savingTeacher} className="btn-primary">{savingTeacher ? <><Loader className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Add Faculty</>}</button>
-                      <button type="button" onClick={() => setShowTeacherForm(false)} className="btn-secondary">Cancel</button>
-                    </div>
-                  </form>
-                </div>
-              )}
-              <div className="card overflow-hidden">
-                {teachers.length === 0 ? (
-                  <div className="py-16 text-center text-slate-400"><BookOpen className="w-10 h-10 mx-auto mb-3 text-slate-300" /><p>No faculty members yet.</p></div>
-                ) : (
-                  <div className="divide-y divide-slate-100">
-                    {teachers.map((t) => (
-                      <div key={t.id} className="p-4 flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-slate-200 flex-shrink-0 overflow-hidden">
-                          {t.photo_url ? <img src={t.photo_url} alt="" className="w-full h-full object-cover" /> : <BookOpen className="w-5 h-5 text-slate-400 m-auto mt-2.5" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-navy-900">{t.full_name}</p>
-                          <p className="text-sm text-slate-500">{t.qualification || '—'} {t.subject_in_charge ? `· ${t.subject_in_charge}` : ''}</p>
-                          <p className="text-xs text-slate-400">{t.is_current ? 'Current' : 'Former'}</p>
-                        </div>
-                        <button onClick={() => setConfirmConfig({ title: 'Delete Faculty', message: `Delete ${t.full_name}?`, confirmLabel: 'Delete', danger: true, onConfirm: () => deleteTeacher(t.id) })}
-                          className="p-1.5 text-red-500 hover:text-red-700 rounded hover:bg-red-50 transition-colors">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* APPLICATIONS */}
           {tab === 'applications' && (
             <div className="card overflow-hidden">
@@ -1501,10 +1556,13 @@ export default function AdminDashboard() {
                     {downloads.map((d) => (
                       <div key={d.id} className="p-4 flex items-center gap-4">
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-navy-900">{d.title}</p>
+                          <button onClick={() => { setViewingDownload(d); setDownloadEditForm({ title: d.title, description: d.description ?? '', category: d.category, semester: d.semester ?? '', is_active: d.is_active }); }} className="font-medium text-navy-900 hover:text-gold-600 transition-colors text-left">
+                            {d.title}
+                          </button>
                           <p className="text-xs text-slate-500">{d.category.replace(/_/g, ' ')} {d.semester ? `· ${d.semester}` : ''} {d.file_size_kb ? `· ${d.file_size_kb} KB` : ''}</p>
                         </div>
                         <a href={d.file_url} target="_blank" rel="noopener noreferrer" className="p-1.5 text-navy-600 hover:text-navy-800 rounded hover:bg-navy-50"><ExternalLink className="w-4 h-4" /></a>
+                        <button onClick={() => { setViewingDownload(d); setDownloadEditForm({ title: d.title, description: d.description ?? '', category: d.category, semester: d.semester ?? '', is_active: d.is_active }); }} className="p-1.5 text-slate-600 hover:text-navy-800 rounded hover:bg-slate-50" title="View / Edit Details"><Eye className="w-4 h-4" /></button>
                         <button onClick={() => setConfirmConfig({ title: 'Delete Download', message: `Delete "${d.title}"?`, confirmLabel: 'Delete', danger: true, onConfirm: () => deleteDownload(d.id) })}
                           className="p-1.5 text-red-500 hover:text-red-700 rounded hover:bg-red-50 transition-colors">
                           <Trash2 className="w-4 h-4" />
@@ -1518,114 +1576,150 @@ export default function AdminDashboard() {
           )}
 
           {/* GALLERY */}
-          {tab === 'gallery' && (
+          {/* CERTIFICATES */}
+          {tab === 'certificates' && (
             <div className="space-y-4">
-              <div className="flex justify-end">
-                <button onClick={() => setShowGalleryUpload(true)} className="btn-primary"><Plus className="w-4 h-4" /> Add Photo</button>
+              <div className="card p-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                  <div>
+                    <h2 className="font-serif font-bold text-navy-900">Certificate Management ({filteredCerts.length})</h2>
+                    <p className="text-slate-500 text-sm mt-1">Search, view, download, and edit student certificates</p>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      value={certSearch}
+                      onChange={(e) => setCertSearch(e.target.value)}
+                      placeholder="Search certificates..."
+                      className="input-field pl-10"
+                    />
+                  </div>
+                  <select
+                    value={certSearchField}
+                    onChange={(e) => setCertSearchField(e.target.value as any)}
+                    className="input-field sm:w-40"
+                  >
+                    <option value="all">All Fields</option>
+                    <option value="name">Name</option>
+                    <option value="year">Year</option>
+                    <option value="id">Certificate ID</option>
+                    <option value="date">Date</option>
+                  </select>
+                </div>
               </div>
-              {showGalleryUpload && (
-                <div className="card p-6">
-                  <h2 className="font-serif font-bold text-navy-900 mb-4">Add Gallery Photo</h2>
-                  <div className="space-y-4">
-                    <div><label className="label">Title (optional)</label><input value={galleryUploadForm.title} onChange={(e) => setGalleryUploadForm((f) => ({ ...f, title: e.target.value }))} className="input-field" placeholder="Photo title..." /></div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div><label className="label">Album</label>
-                        <select value={galleryUploadForm.album} onChange={(e) => setGalleryUploadForm((f) => ({ ...f, album: e.target.value }))} className="input-field">
-                          <option value="General">General</option>
-                          <option value="Events">Events</option>
-                          <option value="Campus">Campus</option>
-                          <option value="Graduation">Graduation</option>
-                          <option value="Guests">Guests</option>
-                        </select>
-                      </div>
-                      <div><label className="label">Link URL (optional)</label><input type="url" value={galleryUploadForm.link_url} onChange={(e) => setGalleryUploadForm((f) => ({ ...f, link_url: e.target.value }))} className="input-field" placeholder="https://facebook.com/..." />
-                        <p className="text-xs text-slate-400 mt-1">Link to Facebook album, YouTube video, etc.</p>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="label">Photo *</label>
-                      <input type="file" accept="image/*" onChange={(e) => setGalleryUploadFile(e.target.files?.[0] ?? null)} className="input-field" />
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                      <button onClick={uploadGalleryPhoto} disabled={galleryUploading || !galleryUploadFile} className="btn-primary">
-                        {galleryUploading ? <><Loader className="w-4 h-4 animate-spin" /> Uploading...</> : <><Upload className="w-4 h-4" /> Upload</>}
-                      </button>
-                      <button type="button" onClick={() => { setShowGalleryUpload(false); setGalleryUploadForm({ title: '', album: 'General', link_url: '' }); setGalleryUploadFile(null); }} className="btn-secondary">Cancel</button>
-                    </div>
+
+              {filteredCerts.length === 0 ? (
+                <div className="card py-16 text-center">
+                  <Award className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+                  <p className="text-slate-400">No certificates found.</p>
+                </div>
+              ) : (
+                <div className="card overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 text-slate-600 uppercase text-xs tracking-wide">
+                        <tr>
+                          <th className="px-4 py-3 text-left">Student Name</th>
+                          <th className="px-4 py-3 text-left">Certificate ID</th>
+                          <th className="px-4 py-3 text-left">Course</th>
+                          <th className="px-4 py-3 text-left">Year</th>
+                          <th className="px-4 py-3 text-left">Completion Date</th>
+                          <th className="px-4 py-3 text-left">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredCerts.map((u) => (
+                          <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-4 py-3">
+                              <Link to={`/admin/users/${u.id}`} className="font-medium text-navy-900 hover:text-gold-600 transition-colors">
+                                {u.full_name || '—'}
+                              </Link>
+                              <p className="text-xs text-slate-500">{u.email}</p>
+                            </td>
+                            <td className="px-4 py-3 font-mono text-xs font-semibold text-navy-900">{getCertificateId(u)}</td>
+                            <td className="px-4 py-3 text-slate-700">{u.course || '—'}</td>
+                            <td className="px-4 py-3 text-slate-700">{getCertYear(u)}</td>
+                            <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
+                              {u.completion_date ? new Date(u.completion_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1 flex-nowrap whitespace-nowrap">
+                                <Link to={`/certificate/${u.id}`} target="_blank"
+                                  className="inline-flex items-center justify-center w-8 h-8 bg-navy-100 text-navy-700 rounded-lg hover:bg-navy-200 transition-colors" title="View Certificate">
+                                  <Eye className="w-4 h-4" />
+                                </Link>
+                                <button
+                                  onClick={() => { setCertEditing(u); setCertEditForm({ certificate_id: u.certificate_id ?? '', course: u.course ?? '', completion_date: u.completion_date ?? '', pata_reg_no: u.pata_reg_no ?? '' }); }}
+                                  className="inline-flex items-center justify-center w-8 h-8 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors" title="Edit Certificate">
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
-              <div className="card p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-serif font-bold text-navy-900">Gallery Management ({photos.length} photos)</h2>
-                  <div className="flex items-center gap-2">
-                    {galleryAlbums.map((album) => (
-                      <button key={album} onClick={() => setGalleryFilter(album)}
-                        className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${galleryFilter === album ? 'bg-navy-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                        {album}
-                      </button>
-                    ))}
-                  </div>
+            </div>
+          )}
+
+          {/* Certificate Edit Modal */}
+          {certEditing && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setCertEditing(null)}>
+              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="text-lg font-serif font-bold text-navy-900">Edit Certificate</h2>
+                  <button onClick={() => setCertEditing(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
                 </div>
-                {filteredPhotos.length === 0 ? (
-                  <div className="py-16 text-center text-slate-400"><Image className="w-10 h-10 mx-auto mb-3 text-slate-300" /><p>No photos in this album.</p></div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                    {filteredPhotos.map((photo) => (
-                      <div key={photo.id} className="border border-slate-200 rounded-xl overflow-hidden group relative">
-                        <div className="aspect-square bg-slate-100">
-                          <img src={photo.image_url} alt={photo.title || ''} className="w-full h-full object-cover" />
-                        </div>
-                        {!photo.is_published && (
-                          <div className="absolute top-1 left-1 bg-slate-900/70 text-white text-xs px-1.5 py-0.5 rounded">Draft</div>
-                        )}
-                        <div className="p-2 space-y-1.5">
-                          <p className="text-xs font-medium text-navy-900 truncate">{photo.title || 'Untitled'}</p>
-                          <p className="text-xs text-slate-400">{photo.album ?? 'General'}</p>
-
-                          {/* Link URL */}
-                          {galleryLinkEditing === photo.id ? (
-                            <div className="space-y-1">
-                              <input
-                                type="url" value={galleryLinkValue}
-                                onChange={(e) => setGalleryLinkValue(e.target.value)}
-                                placeholder="https://..." autoFocus
-                                className="w-full text-xs border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-navy-500"
-                              />
-                              <div className="flex gap-1">
-                                <button onClick={() => saveGalleryLink(photo.id)} disabled={galleryLinkSaving}
-                                  className="flex-1 text-xs py-1 bg-navy-800 text-white rounded hover:bg-navy-700 transition-colors">
-                                  {galleryLinkSaving ? <Loader className="w-3 h-3 animate-spin mx-auto" /> : 'Save'}
-                                </button>
-                                <button onClick={() => { setGalleryLinkEditing(null); setGalleryLinkValue(''); }}
-                                  className="px-2 py-1 text-slate-500 hover:text-slate-700 text-xs rounded border border-slate-200">
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <button onClick={() => { setGalleryLinkEditing(photo.id); setGalleryLinkValue(photo.link_url ?? ''); }}
-                              className="w-full flex items-center gap-1 text-xs text-slate-500 hover:text-navy-700 transition-colors">
-                              <LinkIcon className="w-3 h-3 flex-shrink-0" />
-                              <span className="truncate">{photo.link_url ? photo.link_url : 'Add link...'}</span>
-                            </button>
-                          )}
-
-                          <div className="flex gap-1 pt-1">
-                            <button onClick={() => togglePhotoPublished(photo)} title={photo.is_published ? 'Unpublish' : 'Publish'}
-                              className="flex-1 text-xs py-1 rounded border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1">
-                              {photo.is_published ? <><EyeOff className="w-3 h-3" /> Hide</> : <><Eye className="w-3 h-3" /> Show</>}
-                            </button>
-                            <button onClick={() => setConfirmConfig({ title: 'Delete Photo', message: 'Delete this photo?', confirmLabel: 'Delete', danger: true, onConfirm: () => deletePhoto(photo.id) })}
-                              className="px-2 py-1 text-red-500 hover:text-red-700 rounded border border-slate-200 hover:bg-red-50 transition-colors">
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                <form onSubmit={saveCertEdit} className="space-y-4">
+                  <div><label className="label">Certificate ID</label><input value={certEditForm.certificate_id} onChange={(e) => setCertEditForm((f) => ({ ...f, certificate_id: e.target.value }))} className="input-field font-mono" placeholder="ABC-2024-XXXXXXXX" /><p className="text-xs text-slate-400 mt-1">Leave blank to auto-generate</p></div>
+                  <div><label className="label">Course</label><input value={certEditForm.course} onChange={(e) => setCertEditForm((f) => ({ ...f, course: e.target.value }))} className="input-field" /></div>
+                  <div><label className="label">Completion Date</label><input type="date" value={certEditForm.completion_date} onChange={(e) => setCertEditForm((f) => ({ ...f, completion_date: e.target.value }))} className="input-field" /></div>
+                  <div><label className="label">PATA Reg No</label><input value={certEditForm.pata_reg_no} onChange={(e) => setCertEditForm((f) => ({ ...f, pata_reg_no: e.target.value }))} className="input-field" /></div>
+                  <div className="flex gap-3 pt-2">
+                    <button type="submit" disabled={certSaving} className="btn-primary">{certSaving ? <><Loader className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save Changes</>}</button>
+                    <button type="button" onClick={() => setCertEditing(null)} className="btn-secondary">Cancel</button>
                   </div>
-                )}
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Download View/Edit Modal */}
+          {viewingDownload && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setViewingDownload(null)}>
+              <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="text-lg font-serif font-bold text-navy-900">Download Details</h2>
+                  <button onClick={() => setViewingDownload(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                </div>
+                <div className="space-y-4">
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <p className="text-xs text-slate-500 mb-1">File</p>
+                    <p className="font-medium text-navy-900">{viewingDownload.title}</p>
+                    <p className="text-xs text-slate-500 mt-1">{viewingDownload.category.replace(/_/g, ' ')} {viewingDownload.semester ? `· ${viewingDownload.semester}` : ''} {viewingDownload.file_size_kb ? `· ${viewingDownload.file_size_kb} KB` : ''}</p>
+                    {viewingDownload.description && <p className="text-sm text-slate-600 mt-2">{viewingDownload.description}</p>}
+                    <a href={viewingDownload.file_url} target="_blank" rel="noopener noreferrer" className="btn-primary text-sm mt-3 inline-flex"><Download className="w-4 h-4" /> Download File</a>
+                  </div>
+                  <form onSubmit={async (e) => { e.preventDefault(); setDownloadEditSaving(true); const { data, error } = await supabase.from('downloads').update({ title: downloadEditForm.title, description: downloadEditForm.description || null, category: downloadEditForm.category, semester: downloadEditForm.semester || null, is_active: downloadEditForm.is_active }).eq('id', viewingDownload.id).select().single(); if (!error && data) { setDownloads((prev) => prev.map((d) => d.id === data.id ? data : d)); setViewingDownload(null); } setDownloadEditSaving(false); }} className="space-y-3">
+                    <div><label className="label">Title</label><input value={downloadEditForm.title} onChange={(e) => setDownloadEditForm((f) => ({ ...f, title: e.target.value }))} className="input-field" /></div>
+                    <div><label className="label">Description</label><textarea value={downloadEditForm.description} onChange={(e) => setDownloadEditForm((f) => ({ ...f, description: e.target.value }))} className="input-field resize-none min-h-16" /></div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><label className="label">Category</label><select value={downloadEditForm.category} onChange={(e) => setDownloadEditForm((f) => ({ ...f, category: e.target.value as any }))} className="input-field"><option value="general">General</option><option value="syllabus">Syllabus</option><option value="question_paper">Question Paper</option><option value="result">Result</option><option value="notice">Notice</option><option value="other">Other</option></select></div>
+                      <div><label className="label">Semester</label><input value={downloadEditForm.semester} onChange={(e) => setDownloadEditForm((f) => ({ ...f, semester: e.target.value }))} className="input-field" /></div>
+                    </div>
+                    <div className="flex items-center gap-2"><input type="checkbox" id="dl_active" checked={downloadEditForm.is_active} onChange={(e) => setDownloadEditForm((f) => ({ ...f, is_active: e.target.checked }))} className="rounded" /><label htmlFor="dl_active" className="text-sm text-slate-700">Active</label></div>
+                    <div className="flex gap-3 pt-2">
+                      <button type="submit" disabled={downloadEditSaving} className="btn-primary">{downloadEditSaving ? <><Loader className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save Changes</>}</button>
+                      <button type="button" onClick={() => setViewingDownload(null)} className="btn-secondary">Close</button>
+                    </div>
+                  </form>
+                </div>
               </div>
             </div>
           )}
@@ -1673,11 +1767,28 @@ export default function AdminDashboard() {
               {/* Hero Opacity */}
               <div className="card p-6">
                 <h2 className="font-serif font-bold text-navy-900 text-lg mb-1">Hero Banner Opacity</h2>
-                <p className="text-slate-500 text-sm mb-5">Control how dark the hero banner overlay is (0 = transparent, 1 = fully dark).</p>
-                <div className="space-y-3">
+                <p className="text-slate-500 text-sm mb-4">Control how dark the hero banner overlay is (0 = transparent, 1 = fully dark).</p>
+                <div className="space-y-4">
+                  {/* Live preview */}
+                  <div className="relative rounded-xl overflow-hidden h-36 bg-slate-200">
+                    <img
+                      src={siteSettings.find((s) => s.setting_key === 'home_hero_image')?.setting_value || 'https://images.pexels.com/photos/289737/pexels-photo-289737.jpeg?auto=compress&cs=tinysrgb&w=800'}
+                      alt="Hero preview"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    <div
+                      className="absolute inset-0"
+                      style={{ background: `linear-gradient(135deg, rgba(17,22,64,${heroOpacity}) 0%, rgba(30,42,138,${heroOpacity}) 60%, rgba(34,54,216,${heroOpacity * 0.97}) 100%)` }}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <p className="text-white font-serif font-bold text-base drop-shadow">Preview</p>
+                    </div>
+                  </div>
                   <div className="flex items-center gap-4">
+                    <span className="text-xs text-slate-400 w-16">Transparent</span>
                     <input type="range" min="0" max="1" step="0.05" value={heroOpacity} onChange={(e) => setHeroOpacity(parseFloat(e.target.value))} className="flex-1" />
-                    <span className="text-sm font-mono text-slate-700 w-12 text-right">{heroOpacity.toFixed(2)}</span>
+                    <span className="text-xs text-slate-400 w-10 text-right">Dark</span>
+                    <span className="text-sm font-mono font-semibold text-navy-900 w-12 text-right">{heroOpacity.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-end">
                     <button onClick={saveHeroOpacity} disabled={heroOpacitySaving} className="btn-primary">
@@ -1687,30 +1798,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Transaction Visibility */}
-              <div className="card p-6">
-                <h2 className="font-serif font-bold text-navy-900 text-lg mb-1">Transaction History Visibility</h2>
-                <p className="text-slate-500 text-sm mb-5">Control whether the public can see a user's transaction history when visiting their profile.</p>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => saveTransactionVisibility(!showTransactionsPublic)}
-                      disabled={transactionVisibilitySaving}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${showTransactionsPublic ? 'bg-navy-700' : 'bg-slate-300'}`}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showTransactionsPublic ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
-                    <div>
-                      <p className="text-sm font-medium text-slate-700">{showTransactionsPublic ? 'Public — visible to everyone' : 'Private — only visible to the user and admins'}</p>
-                      <p className="text-xs text-slate-400 mt-0.5">Toggle to change visibility</p>
-                    </div>
-                    {transactionVisibilitySaving && <Loader className="w-4 h-4 text-slate-400 animate-spin" />}
-                  </div>
-                  <div className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg ${showTransactionsPublic ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
-                    {showTransactionsPublic ? <><Eye className="w-3.5 h-3.5" /> Public</> : <><EyeOff className="w-3.5 h-3.5" /> Private</>}
-                  </div>
-                </div>
-              </div>
+              {/* Transaction Visibility moved to user Profile page */}
 
               {/* Role-Based Themes */}
               <div className="card p-6">
@@ -1799,56 +1887,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Board Members */}
-              <div className="card p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-serif font-bold text-navy-900">Board of Management</h2>
-                  <button onClick={() => setShowBoardMemberForm(true)} className="btn-primary"><Plus className="w-4 h-4" /> Add Member</button>
-                </div>
-                {showBoardMemberForm && (
-                  <form onSubmit={saveBoardMember} className="border border-slate-200 rounded-xl p-4 mb-4 space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div><label className="label text-xs">Full Name *</label><input value={boardMemberForm.name} onChange={(e) => setBoardMemberForm((f) => ({ ...f, name: e.target.value }))} className="input-field" required /></div>
-                      <div><label className="label text-xs">Designation</label><input value={boardMemberForm.designation} onChange={(e) => setBoardMemberForm((f) => ({ ...f, designation: e.target.value }))} className="input-field" /></div>
-                      <div><label className="label text-xs">Display Order</label><input type="number" value={boardMemberForm.display_order} onChange={(e) => setBoardMemberForm((f) => ({ ...f, display_order: parseInt(e.target.value) || 0 }))} className="input-field" /></div>
-                      <div>
-                        <label className="label text-xs">Photo</label>
-                        <label className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer w-fit border border-slate-300 ${boardPhotoUploading ? 'text-slate-400 cursor-not-allowed' : 'text-slate-700 hover:bg-slate-50'}`}>
-                          {boardPhotoUploading ? <><Loader className="w-4 h-4 animate-spin" /> Uploading...</> : <><Upload className="w-4 h-4" /> Photo</>}
-                          <input type="file" accept="image/*" className="hidden" disabled={boardPhotoUploading} onChange={async (e) => { const f = e.target.files?.[0]; if (f) { const url = await uploadBoardPhoto(f); if (url) setBoardMemberForm((bf) => ({ ...bf, photo_url: url })); } }} />
-                        </label>
-                        {boardMemberForm.photo_url && <p className="text-xs text-green-600 mt-1">Photo uploaded</p>}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button type="submit" disabled={savingBoardMember} className="btn-primary text-sm">{savingBoardMember ? 'Saving...' : 'Add Member'}</button>
-                      <button type="button" onClick={() => setShowBoardMemberForm(false)} className="btn-secondary text-sm">Cancel</button>
-                    </div>
-                  </form>
-                )}
-                <div className="divide-y divide-slate-100">
-                  {boardMembers.map((b) => (
-                    <div key={b.id} className="py-3 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-slate-200 flex-shrink-0 overflow-hidden">
-                        {b.photo_url ? <img src={b.photo_url} alt="" className="w-full h-full object-cover" /> : <Award className="w-5 h-5 text-slate-400 m-auto mt-2.5" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-navy-900 text-sm">{b.name}</p>
-                        <p className="text-xs text-slate-500">{b.designation || '—'}</p>
-                      </div>
-                      <button onClick={() => { setEditingBoardMember(b); setBoardEditForm({ name: b.name, designation: b.designation ?? '', photo_url: b.photo_url ?? '', display_order: b.display_order ?? 0 }); }}
-                        className="p-1.5 text-navy-600 hover:text-navy-800 rounded hover:bg-navy-50 transition-colors">
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => setConfirmConfig({ title: 'Delete Board Member', message: `Delete ${b.name}?`, confirmLabel: 'Delete', danger: true, onConfirm: () => deleteBoardMember(b.id) })}
-                        className="p-1.5 text-red-500 hover:text-red-700 rounded hover:bg-red-50 transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                  {boardMembers.length === 0 && <p className="text-sm text-slate-400 py-4 text-center">No board members added yet.</p>}
-                </div>
-              </div>
+              {/* Board Members section moved to Faculty tab */}
             </div>
           )}
 
