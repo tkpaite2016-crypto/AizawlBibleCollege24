@@ -4,11 +4,11 @@ import {
   User, Mail, Phone, MapPin, CreditCard as Edit2, Save, X, BookOpen,
   Calendar, Loader, RefreshCw, Upload, Award, FileCheck, GraduationCap,
   CreditCard, IndianRupee, Plus, CheckCircle, AlertCircle, Sparkles, Palette,
-  Ban, Bell, CheckCheck, Clock, Eye, EyeOff,
+  Ban, Bell, BellRing, BellOff, CheckCheck, Clock, Eye, EyeOff, Smartphone,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import type { Notification } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
 import { getTheme } from '../lib/themes';
 
 type Transaction = {
@@ -68,10 +68,9 @@ export default function Profile() {
   const [razorpayEnabled, setRazorpayEnabled] = useState(false);
   const [razorpayKeyId, setRazorpayKeyId] = useState('');
 
-  // Notifications state
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [notifLoading, setNotifLoading] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  // Notifications from context
+  const { notifications, unreadCount, notifLoading: notifLoadingCtx, markAsRead, markAllAsRead, pushSupported, pushEnabled, enablePush, disablePush } = useNotifications();
+  const [pushToggling, setPushToggling] = useState(false);
 
   // Load role-based themes
   useEffect(() => {
@@ -221,29 +220,25 @@ export default function Profile() {
   }
 
   async function loadNotifications() {
-    setNotifLoading(true);
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', profile!.id)
-      .order('created_at', { ascending: false })
-      .limit(20);
-    const notifs = data ?? [];
-    setNotifications(notifs);
-    setUnreadCount(notifs.filter((n) => !n.is_read).length);
-    setNotifLoading(false);
+    // Provided by NotificationContext — kept as no-op for backward compatibility
   }
 
   async function markNotifRead(id: string) {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
-    setUnreadCount((c) => Math.max(0, c - 1));
+    await markAsRead(id);
   }
 
   async function markAllRead() {
-    await supabase.from('notifications').update({ is_read: true }).eq('user_id', profile!.id).eq('is_read', false);
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    setUnreadCount(0);
+    await markAllAsRead();
+  }
+
+  async function togglePush() {
+    setPushToggling(true);
+    if (pushEnabled) {
+      await disablePush();
+    } else {
+      await enablePush();
+    }
+    setPushToggling(false);
   }
 
   async function submitPayment(e: React.FormEvent) {
@@ -785,24 +780,57 @@ export default function Profile() {
               </div>
             )}
 
-            {/* Notifications Section */}
-            {notifications.length > 0 && (
-              <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-200">
-                <div className="flex items-center justify-between mb-3">
+            {/* Push Notification Settings */}
+            {pushSupported && (
+              <div className="mt-6 p-4 bg-navy-900/5 rounded-xl border border-navy-900/10">
+                <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-semibold text-navy-900 flex items-center gap-2">
-                    <Bell className="w-4 h-4 text-amber-500" />
-                    Notifications
-                    {unreadCount > 0 && (
-                      <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">{unreadCount}</span>
-                    )}
+                    <Smartphone className="w-4 h-4 text-navy-700" />
+                    Push Notifications
                   </h3>
-                  {unreadCount > 0 && (
-                    <button onClick={markAllRead} className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
-                      <CheckCheck className="w-3.5 h-3.5" /> Mark all read
-                    </button>
-                  )}
+                  <button
+                    onClick={togglePush}
+                    disabled={pushToggling}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                      pushEnabled
+                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                        : 'bg-navy-900 text-white hover:bg-navy-800'
+                    }`}
+                  >
+                    {pushToggling ? (
+                      <><Loader className="w-3.5 h-3.5 animate-spin" /> Working...</>
+                    ) : pushEnabled ? (
+                      <><BellRing className="w-3.5 h-3.5" /> Enabled</>
+                    ) : (
+                      <><BellOff className="w-3.5 h-3.5" /> Enable</>
+                    )}
+                  </button>
                 </div>
-                {notifLoading ? (
+                <p className="text-xs text-slate-500">
+                  {pushEnabled
+                    ? 'You will receive push notifications on this device even when the site is closed.'
+                    : 'Enable to receive push notifications on this device, even when the app is closed.'}
+                </p>
+              </div>
+            )}
+
+            {/* Notifications Section */}
+            <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-200">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-navy-900 flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-amber-500" />
+                  Notifications
+                  {unreadCount > 0 && (
+                    <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">{unreadCount}</span>
+                  )}
+                </h3>
+                {unreadCount > 0 && (
+                  <button onClick={markAllRead} className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                    <CheckCheck className="w-3.5 h-3.5" /> Mark all read
+                  </button>
+                )}
+              </div>
+              {notifLoadingCtx ? (
                   <div className="flex justify-center py-3"><Loader className="w-4 h-4 animate-spin text-amber-500" /></div>
                 ) : (
                   <div className="space-y-2">
@@ -837,7 +865,6 @@ export default function Profile() {
                   </div>
                 )}
               </div>
-            )}
 
             <div className="mt-6 pt-6 border-t border-slate-100">
               <p className="text-xs text-slate-400">

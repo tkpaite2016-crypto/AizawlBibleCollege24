@@ -245,13 +245,33 @@ export default function Transaction() {
     e.preventDefault();
     if (!selectedUser || !profile) return;
     setSendingNotif(true);
-    await supabase.from('notifications').insert({
+    const { error } = await supabase.from('notifications').insert({
       user_id: selectedUser.id,
       sent_by: profile.id,
       title: notifForm.title,
       message: notifForm.message,
       type: notifForm.type,
     });
+    if (!error) {
+      // Fire-and-forget push notification via edge function
+      try {
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push-notification`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            user_id: selectedUser.id,
+            title: notifForm.title,
+            body: notifForm.message,
+            click_action: '/profile',
+          }),
+        });
+      } catch {
+        // Push delivery failure shouldn't block the in-app notification
+      }
+    }
     setNotifForm({ title: '', message: '', type: 'payment' });
     setShowNotifForm(false);
     setNotifSent(true);

@@ -1,8 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
-import { Menu, X, ChevronDown, User, LogOut, LayoutDashboard, CreditCard, Bell } from 'lucide-react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, X, ChevronDown, User, LogOut, LayoutDashboard, CreditCard, Bell, BellOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
 import { supabase } from '../lib/supabase';
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
 
 const navLinks = [
   { label: 'Home', path: '/' },
@@ -30,9 +43,12 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [dropdown, setDropdown] = useState('');
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [notifOpen, setNotifOpen] = useState(false);
   const { user, profile, signOut } = useAuth();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, pushSupported, pushEnabled, enablePush } = useNotifications();
   const location = useLocation();
   const navRef = useRef<HTMLElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setOpen(false);
@@ -65,6 +81,9 @@ export default function Navbar() {
     function handleClickOutside(e: MouseEvent) {
       if (navRef.current && !navRef.current.contains(e.target as Node)) {
         setDropdown('');
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -168,6 +187,69 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-1 flex-shrink-0">
             {user ? (
               <>
+                {/* User notification bell */}
+                <div className="relative" ref={notifRef}>
+                  <button
+                    onClick={() => setNotifOpen((v) => !v)}
+                    className="relative p-1.5 text-white hover:bg-white/10 rounded-lg transition-colors"
+                    title={`${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}`}
+                  >
+                    <Bell className="w-4 h-4" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full px-1 animate-pulse">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+                  {notifOpen && (
+                    <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                        <span className="font-serif font-bold text-navy-900 text-sm">Notifications</span>
+                        {unreadCount > 0 && (
+                          <button onClick={markAllAsRead} className="text-xs text-blue-600 hover:text-blue-800 font-medium">Mark all read</button>
+                        )}
+                      </div>
+                      <div className="max-h-80 overflow-y-auto">
+                        {notifications.length === 0 ? (
+                          <div className="px-4 py-8 text-center">
+                            <BellOff className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                            <p className="text-sm text-slate-400">No notifications yet</p>
+                          </div>
+                        ) : (
+                          notifications.slice(0, 5).map((n) => (
+                            <button
+                              key={n.id}
+                              onClick={() => { if (!n.is_read) markAsRead(n.id); }}
+                              className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors ${!n.is_read ? 'bg-amber-50/50' : ''}`}
+                            >
+                              <div className="flex items-start gap-2">
+                                {!n.is_read && <span className="w-2 h-2 bg-amber-500 rounded-full mt-1.5 flex-shrink-0" />}
+                                <div className="min-w-0 flex-1">
+                                  <p className={`text-sm text-slate-800 ${!n.is_read ? 'font-semibold' : 'font-normal'}`}>{n.title}</p>
+                                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.message}</p>
+                                  <p className="text-[11px] text-slate-400 mt-1">{timeAgo(n.created_at)}</p>
+                                </div>
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                      {pushSupported && !pushEnabled && (
+                        <button onClick={() => { enablePush(); }} className="w-full px-4 py-2.5 bg-navy-900 text-white text-xs font-medium hover:bg-navy-800 transition-colors flex items-center justify-center gap-2">
+                          <Bell className="w-3.5 h-3.5" /> Enable push notifications on this device
+                        </button>
+                      )}
+                      {pushSupported && pushEnabled && (
+                        <div className="px-4 py-2 bg-green-50 text-green-700 text-xs text-center flex items-center justify-center gap-1.5">
+                          <Bell className="w-3.5 h-3.5" /> Push notifications enabled
+                        </div>
+                      )}
+                      <Link to="/profile" onClick={() => setNotifOpen(false)} className="block px-4 py-2.5 text-center text-xs text-blue-600 hover:bg-slate-50 font-medium border-t border-slate-100">
+                        View all in Profile
+                      </Link>
+                    </div>
+                  )}
+                </div>
                 {/* Admin notification bell - smaller and responsive */}
                 {profile?.role === 'admin' && (
                   <Link
@@ -326,6 +408,12 @@ export default function Navbar() {
                     <Link to="/profile" className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 rounded-lg">
                       <User className="w-4 h-4" /> My Profile
                     </Link>
+                    {unreadCount > 0 && (
+                      <Link to="/profile" className="flex items-center justify-between px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 rounded-lg">
+                        <span className="flex items-center gap-2"><Bell className="w-4 h-4" /> Notifications</span>
+                        <span className="bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{unreadCount > 9 ? '9+' : unreadCount}</span>
+                      </Link>
+                    )}
                     {profile?.role === 'admin' && (
                       <Link to="/admin" className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 rounded-lg">
                         <LayoutDashboard className="w-4 h-4" /> Admin Dashboard
