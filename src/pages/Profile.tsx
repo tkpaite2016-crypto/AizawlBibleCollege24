@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import {
   User, Mail, Phone, MapPin, CreditCard as Edit2, Save, X, BookOpen,
   Calendar, Loader, RefreshCw, Upload, Award, FileCheck, GraduationCap,
   CreditCard, IndianRupee, Plus, CheckCircle, AlertCircle, Sparkles, Palette,
   Ban, Bell, BellRing, BellOff, CheckCheck, Clock, Eye, EyeOff, Smartphone,
+  Newspaper, Pencil, Trash2, FileText,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import type { BlogPost } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { getTheme } from '../lib/themes';
@@ -64,13 +66,23 @@ export default function Profile() {
   const [paymentError, setPaymentError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
+  // My Articles (admin/faculty)
+  const navigate = useNavigate();
+  const [myArticles, setMyArticles] = useState<BlogPost[]>([]);
+  const [articlesLoading, setArticlesLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<BlogPost | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   // Razorpay state
   const [razorpayEnabled, setRazorpayEnabled] = useState(false);
   const [razorpayKeyId, setRazorpayKeyId] = useState('');
 
   // Notifications from context
-  const { notifications, unreadCount, notifLoading: notifLoadingCtx, markAsRead, markAllAsRead, pushSupported, pushEnabled, enablePush, disablePush } = useNotifications();
+  const { notifications, unreadCount, notifLoading: notifLoadingCtx, markAsRead, markAllAsRead, pushSupported, pushEnabled, pushError: contextPushError, enablePush, disablePush } = useNotifications();
   const [pushToggling, setPushToggling] = useState(false);
+  const [localPushError, setLocalPushError] = useState<string | null>(null);
+  const [pushAttempted, setPushAttempted] = useState(false);
+  const pushError = pushAttempted ? (localPushError || contextPushError) : null;
 
   // Load role-based themes
   useEffect(() => {
@@ -193,7 +205,30 @@ export default function Profile() {
     if (profile.role === 'student') {
       loadRazorpaySettings();
     }
+    if (profile.role === 'admin' || profile.role === 'faculty') {
+      loadMyArticles();
+    }
   }, [profile?.id, profile?.role]);
+
+  async function loadMyArticles() {
+    setArticlesLoading(true);
+    const { data } = await supabase
+      .from('blog_posts')
+      .select('*')
+      .eq('author_id', profile!.id)
+      .order('created_at', { ascending: false });
+    setMyArticles((data as BlogPost[]) ?? []);
+    setArticlesLoading(false);
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    await supabase.from('blog_posts').delete().eq('id', deleteTarget.id);
+    setMyArticles((prev) => prev.filter((a) => a.id !== deleteTarget.id));
+    setDeleting(false);
+    setDeleteTarget(null);
+  }
 
   async function loadTransactions() {
     setTransactionsLoading(true);
@@ -232,11 +267,23 @@ export default function Profile() {
   }
 
   async function togglePush() {
+    setPushAttempted(true);
     setPushToggling(true);
-    if (pushEnabled) {
-      await disablePush();
-    } else {
-      await enablePush();
+    setLocalPushError(null);
+    try {
+      if (pushEnabled) {
+        const result = await disablePush();
+        if (!result.success) {
+          setLocalPushError(result.error || 'Failed to disable push notifications.');
+        }
+      } else {
+        const result = await enablePush();
+        if (!result.success) {
+          setLocalPushError(result.error || 'Failed to enable push notifications.');
+        }
+      }
+    } catch (err) {
+      setLocalPushError('An unexpected error occurred. Please try again.');
     }
     setPushToggling(false);
   }
@@ -517,15 +564,26 @@ export default function Profile() {
             </div>
 
             {/* Edit button */}
-            <div className="flex justify-center mb-4">
-              <button
-                onClick={openEdit}
-                disabled={isBanned}
-                className={`btn-secondary flex items-center gap-2 ${isBanned ? 'opacity-50 cursor-not-allowed' : ''}`}
-                title={isBanned ? 'Your account is banned. Editing is disabled.' : ''}
-              >
-                <Edit2 className="w-4 h-4" /> {isBanned ? 'Profile Locked' : 'Edit Profile'}
-              </button>
+            <div className="flex flex-col items-center gap-2 mb-4">
+              <div className="flex flex-wrap justify-center gap-2">
+                <button
+                  onClick={openEdit}
+                  disabled={isBanned}
+                  className={`btn-secondary flex items-center gap-2 ${isBanned ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  title={isBanned ? 'Your account is banned. Editing is disabled.' : ''}
+                >
+                  <Edit2 className="w-4 h-4" /> {isBanned ? 'Profile Locked' : 'Edit Profile'}
+                </button>
+                {(profile?.role === 'admin' || profile?.role === 'faculty') && (
+                  <Link
+                    to="/admin/blog/new"
+                    className="btn-primary flex items-center gap-2"
+                    title="Create or edit blog posts"
+                  >
+                    <Newspaper className="w-4 h-4" /> Blog Editor
+                  </Link>
+                )}
+              </div>
               {isBanned && (
                 <p className="text-xs text-red-500 mt-1 text-center">Editing disabled for banned accounts</p>
               )}
@@ -617,27 +675,6 @@ export default function Profile() {
             {/* Payment Section for Students */}
             {profile.role === 'student' && (
               <>
-              <div className="mt-6 p-4 bg-white rounded-xl border border-slate-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={async () => { setTxVisibilitySaving(true); const newVal = !profile.show_transactions_public; await supabase.from('profiles').update({ show_transactions_public: newVal }).eq('id', profile.id); await refreshProfile(); setTxVisibilitySaving(false); }}
-                      disabled={txVisibilitySaving}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${profile.show_transactions_public ? 'bg-navy-700' : 'bg-slate-300'}`}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${profile.show_transactions_public ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
-                    <div>
-                      <p className="text-sm font-medium text-slate-700">Transaction History Visibility</p>
-                      <p className="text-xs text-slate-400">{profile.show_transactions_public ? 'Public — everyone can see your transactions' : 'Private — only you and admins can see'}</p>
-                    </div>
-                    {txVisibilitySaving && <Loader className="w-4 h-4 text-slate-400 animate-spin" />}
-                  </div>
-                  <div className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg ${profile.show_transactions_public ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
-                    {profile.show_transactions_public ? <><Eye className="w-3.5 h-3.5" /> Public</> : <><EyeOff className="w-3.5 h-3.5" /> Private</>}
-                  </div>
-                </div>
-              </div>
 
               <div className="mt-4 p-5 bg-gradient-to-br from-navy-50 to-gold-50 rounded-xl border border-gold-200">
                 <div className="flex items-center justify-between mb-4">
@@ -780,39 +817,6 @@ export default function Profile() {
               </div>
             )}
 
-            {/* Push Notification Settings */}
-            {pushSupported && (
-              <div className="mt-6 p-4 bg-navy-900/5 rounded-xl border border-navy-900/10">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold text-navy-900 flex items-center gap-2">
-                    <Smartphone className="w-4 h-4 text-navy-700" />
-                    Push Notifications
-                  </h3>
-                  <button
-                    onClick={togglePush}
-                    disabled={pushToggling}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${
-                      pushEnabled
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                        : 'bg-navy-900 text-white hover:bg-navy-800'
-                    }`}
-                  >
-                    {pushToggling ? (
-                      <><Loader className="w-3.5 h-3.5 animate-spin" /> Working...</>
-                    ) : pushEnabled ? (
-                      <><BellRing className="w-3.5 h-3.5" /> Enabled</>
-                    ) : (
-                      <><BellOff className="w-3.5 h-3.5" /> Enable</>
-                    )}
-                  </button>
-                </div>
-                <p className="text-xs text-slate-500">
-                  {pushEnabled
-                    ? 'You will receive push notifications on this device even when the site is closed.'
-                    : 'Enable to receive push notifications on this device, even when the app is closed.'}
-                </p>
-              </div>
-            )}
 
             {/* Notifications Section */}
             <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-200">
@@ -868,12 +872,148 @@ export default function Profile() {
 
             <div className="mt-6 pt-6 border-t border-slate-100">
               <p className="text-xs text-slate-400">
-                Member since {new Date(profile.created_at).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+                Member since {new Date(profile.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })} at {new Date(profile.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
           </div>
         </div>
       </div>
+
+      {/* My Articles — admin/faculty only */}
+      {(profile?.role === 'admin' || profile?.role === 'faculty') && (
+        <div className="page-container max-w-4xl mt-8">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-navy-700" />
+                <h2 className="text-xl font-serif font-bold text-navy-900">My Articles</h2>
+                <span className="text-sm text-slate-400">({myArticles.length})</span>
+              </div>
+              <Link to="/admin/blog/new" className="btn-primary flex items-center gap-2 text-sm">
+                <Plus className="w-4 h-4" /> New Article
+              </Link>
+            </div>
+
+            {articlesLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader className="w-6 h-6 animate-spin text-navy-400" />
+              </div>
+            ) : myArticles.length === 0 ? (
+              <div className="text-center py-12">
+                <Newspaper className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 mb-4">You haven't written any articles yet.</p>
+                <Link to="/admin/blog/new" className="btn-primary inline-flex items-center gap-2 text-sm">
+                  <Plus className="w-4 h-4" /> Write your first article
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {myArticles.map((article) => (
+                  <div
+                    key={article.id}
+                    className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-navy-300 hover:shadow-sm transition-all"
+                  >
+                    {article.featured_image_url ? (
+                      <img
+                        src={article.featured_image_url}
+                        alt={article.title}
+                        className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                        <Newspaper className="w-6 h-6 text-slate-400" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        to={`/post/${article.slug}`}
+                        className="font-serif font-semibold text-navy-900 hover:text-gold-600 transition-colors line-clamp-1"
+                      >
+                        {article.title}
+                      </Link>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            article.is_published
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}
+                        >
+                          {article.is_published ? 'Published' : 'Draft'}
+                        </span>
+                        <span className="text-xs text-slate-400 flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {new Date(article.published_at || article.created_at).toLocaleDateString('en-IN', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => navigate(`/admin/blog/edit/${article.id}`)}
+                        className="p-2 rounded-lg text-slate-500 hover:bg-navy-50 hover:text-navy-700 transition-colors"
+                        title="Edit article"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteTarget(article)}
+                        className="p-2 rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        title="Delete article"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setDeleteTarget(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </div>
+              <h2 className="text-lg font-serif font-bold text-navy-900">Delete Article?</h2>
+            </div>
+            <p className="text-sm text-slate-600 mb-6">
+              Are you sure you want to delete <span className="font-semibold">"{deleteTarget.title}"</span>? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="btn-secondary text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="btn-primary bg-red-600 hover:bg-red-700 text-sm flex items-center gap-2"
+              >
+                {deleting ? <Loader className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Payment Modal */}
       {showPaymentForm && (
@@ -1106,6 +1246,69 @@ export default function Profile() {
                 <label className="label">Bio</label>
                 <textarea value={form.bio} onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))} rows={3} className="input-field resize-none" placeholder="A brief bio about yourself..." />
               </div>
+
+              {/* Push Notification Toggle */}
+              <div className="p-4 bg-navy-50 rounded-xl border border-navy-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={togglePush}
+                      disabled={pushToggling || !pushSupported}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none
+                        ${pushEnabled ? 'bg-green-500' : 'bg-slate-300'}
+                        ${!pushSupported ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${pushEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                    <div>
+                      <p className="text-sm font-medium text-navy-900">Push Notifications</p>
+                      <p className="text-xs text-slate-500">
+                        {!pushSupported
+                          ? 'Requires HTTPS — not available in this environment'
+                          : pushEnabled
+                            ? 'Enabled — you will receive notifications'
+                            : 'Click to enable browser notifications'}
+                      </p>
+                    </div>
+                    {pushToggling && <Loader className="w-4 h-4 text-slate-400 animate-spin ml-1" />}
+                  </div>
+                  {pushEnabled && !pushToggling && (
+                    <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-0.5 rounded-full">ON</span>
+                  )}
+                </div>
+                {pushError && (
+                  <div className="mt-3 p-2.5 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-xs font-medium text-red-700">{pushError}</p>
+                    {pushError.toLowerCase().includes('denied') || pushError.toLowerCase().includes('permission') ? (
+                      <p className="text-xs text-red-600 mt-1">Open your browser site settings and allow notifications, then try again.</p>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+
+              {/* Transaction Visibility Toggle - Students only */}
+              {profile.role === 'student' && (
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={async () => { setTxVisibilitySaving(true); const newVal = !profile.show_transactions_public; await supabase.from('profiles').update({ show_transactions_public: newVal }).eq('id', profile.id); await refreshProfile(); setTxVisibilitySaving(false); }}
+                        disabled={txVisibilitySaving}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${profile.show_transactions_public ? 'bg-green-500' : 'bg-slate-300'}`}
+                      >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${profile.show_transactions_public ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
+                      <div>
+                        <p className="text-sm font-medium text-navy-900">Transaction History Visibility</p>
+                        <p className="text-xs text-slate-500">{profile.show_transactions_public ? 'Public - everyone can see' : 'Private - only you and admins'}</p>
+                      </div>
+                      {txVisibilitySaving && <Loader className="w-4 h-4 text-slate-400 animate-spin" />}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-2 pt-2">
                 <button type="submit" disabled={saving || uploadingAvatar} className="btn-primary flex-1 justify-center">

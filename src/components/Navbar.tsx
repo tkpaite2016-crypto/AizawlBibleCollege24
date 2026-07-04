@@ -30,11 +30,19 @@ const navLinks = [
       { label: 'Board of Management', path: '/board' },
     ],
   },
-  { label: 'Notices', path: '/notices' },
   { label: 'Gallery', path: '/gallery' },
+  { label: 'Blog', path: '/blog' },
   { label: 'Downloads', path: '/downloads' },
-  { label: 'Forum', path: '/forum' },
   { label: 'Apply', path: '/apply' },
+];
+
+// Auth-only links inserted before Contact
+const navLinksAuth = [
+  { label: 'Notices', path: '/notices' },
+  { label: 'Forum', path: '/forum' },
+];
+
+const navLinksPublic = [
   { label: 'Contact', path: '/contact' },
 ];
 
@@ -42,10 +50,9 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [dropdown, setDropdown] = useState('');
-  const [unreadMessages, setUnreadMessages] = useState(0);
   const [notifOpen, setNotifOpen] = useState(false);
   const { user, profile, signOut } = useAuth();
-  const { notifications, unreadCount, markAsRead, markAllAsRead, pushSupported, pushEnabled, enablePush } = useNotifications();
+  const { notifications, unreadCount, adminUnreadMessages, markAsRead, markAllAsRead, pushSupported, pushEnabled, enablePush } = useNotifications();
   const location = useLocation();
   const navRef = useRef<HTMLElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -60,21 +67,6 @@ export default function Navbar() {
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-
-  // Load unread contact messages count for admin
-  useEffect(() => {
-    if (profile?.role === 'admin') {
-      loadUnreadCount();
-    }
-  }, [profile?.role]);
-
-  async function loadUnreadCount() {
-    const { count } = await supabase
-      .from('contact_messages')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_read', false);
-    setUnreadMessages(count ?? 0);
-  }
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -181,6 +173,36 @@ export default function Navbar() {
                 </NavLink>
               )
             )}
+            {user && navLinksAuth.map((link) => (
+              <NavLink
+                key={link.path}
+                to={link.path!}
+                className={({ isActive }) =>
+                  `flex-shrink-0 px-1.5 py-1.5 lg:px-2.5 text-xs lg:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
+                    isActive
+                      ? 'text-gold-400 bg-white/10'
+                      : 'text-slate-200 hover:text-white hover:bg-white/10'
+                  }`
+                }
+              >
+                {link.label}
+              </NavLink>
+            ))}
+            {navLinksPublic.map((link) => (
+              <NavLink
+                key={link.path}
+                to={link.path!}
+                className={({ isActive }) =>
+                  `flex-shrink-0 px-1.5 py-1.5 lg:px-2.5 text-xs lg:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
+                    isActive
+                      ? 'text-gold-400 bg-white/10'
+                      : 'text-slate-200 hover:text-white hover:bg-white/10'
+                  }`
+                }
+              >
+                {link.label}
+              </NavLink>
+            ))}
           </div>
 
           {/* Auth buttons / user menu */}
@@ -195,9 +217,9 @@ export default function Navbar() {
                     title={`${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}`}
                   >
                     <Bell className="w-4 h-4" />
-                    {unreadCount > 0 && (
+                    {(unreadCount + (profile?.role === 'admin' ? adminUnreadMessages : 0)) > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full px-1 animate-pulse">
-                        {unreadCount > 9 ? '9+' : unreadCount}
+                        {(unreadCount + (profile?.role === 'admin' ? adminUnreadMessages : 0)) > 9 ? '9+' : (unreadCount + (profile?.role === 'admin' ? adminUnreadMessages : 0))}
                       </span>
                     )}
                   </button>
@@ -210,28 +232,44 @@ export default function Navbar() {
                         )}
                       </div>
                       <div className="max-h-80 overflow-y-auto">
-                        {notifications.length === 0 ? (
+                        {notifications.length === 0 && adminUnreadMessages === 0 ? (
                           <div className="px-4 py-8 text-center">
                             <BellOff className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                             <p className="text-sm text-slate-400">No notifications yet</p>
                           </div>
                         ) : (
-                          notifications.slice(0, 5).map((n) => (
-                            <button
-                              key={n.id}
-                              onClick={() => { if (!n.is_read) markAsRead(n.id); }}
-                              className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors ${!n.is_read ? 'bg-amber-50/50' : ''}`}
-                            >
-                              <div className="flex items-start gap-2">
-                                {!n.is_read && <span className="w-2 h-2 bg-amber-500 rounded-full mt-1.5 flex-shrink-0" />}
+                          <>
+                            {/* Admin: unread contact messages */}
+                            {profile?.role === 'admin' && adminUnreadMessages > 0 && (
+                              <Link
+                                to="/admin?tab=messages"
+                                onClick={() => setNotifOpen(false)}
+                                className="w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors flex items-start gap-2 bg-red-50/40"
+                              >
+                                <span className="w-2 h-2 bg-red-500 rounded-full mt-1.5 flex-shrink-0" />
                                 <div className="min-w-0 flex-1">
-                                  <p className={`text-sm text-slate-800 ${!n.is_read ? 'font-semibold' : 'font-normal'}`}>{n.title}</p>
-                                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.message}</p>
-                                  <p className="text-[11px] text-slate-400 mt-1">{timeAgo(n.created_at)}</p>
+                                  <p className="text-sm font-semibold text-slate-800">{adminUnreadMessages} unread message{adminUnreadMessages !== 1 ? 's' : ''}</p>
+                                  <p className="text-xs text-slate-500 mt-0.5">New contact form submissions</p>
                                 </div>
-                              </div>
-                            </button>
-                          ))
+                              </Link>
+                            )}
+                            {notifications.slice(0, 5).map((n) => (
+                              <button
+                                key={n.id}
+                                onClick={() => { if (!n.is_read) markAsRead(n.id); }}
+                                className={`w-full text-left px-4 py-3 border-b border-slate-50 hover:bg-slate-50 transition-colors ${!n.is_read ? 'bg-amber-50/50' : ''}`}
+                              >
+                                <div className="flex items-start gap-2">
+                                  {!n.is_read && <span className="w-2 h-2 bg-amber-500 rounded-full mt-1.5 flex-shrink-0" />}
+                                  <div className="min-w-0 flex-1">
+                                    <p className={`text-sm text-slate-800 ${!n.is_read ? 'font-semibold' : 'font-normal'}`}>{n.title}</p>
+                                    <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.message}</p>
+                                    <p className="text-[11px] text-slate-400 mt-1">{timeAgo(n.created_at)}</p>
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                          </>
                         )}
                       </div>
                       {pushSupported && !pushEnabled && (
@@ -250,21 +288,7 @@ export default function Navbar() {
                     </div>
                   )}
                 </div>
-                {/* Admin notification bell - smaller and responsive */}
-                {profile?.role === 'admin' && (
-                  <Link
-                    to="/admin?tab=messages"
-                    className="relative p-1.5 text-white hover:bg-white/10 rounded-lg transition-colors"
-                    title={`${unreadMessages} unread message${unreadMessages !== 1 ? 's' : ''}`}
-                  >
-                    <Bell className="w-4 h-4" />
-                    {unreadMessages > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full px-1">
-                        {unreadMessages > 9 ? '9+' : unreadMessages}
-                      </span>
-                    )}
-                  </Link>
-                )}
+                {/* Admin notification bell removed */}
                 <div className="relative">
                   <button
                     onClick={() => toggleDropdown('user')}
@@ -297,16 +321,6 @@ export default function Navbar() {
                       <>
                         <Link to="/admin" className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
                           <LayoutDashboard className="w-4 h-4" /> Admin Dashboard
-                        </Link>
-                        <Link to="/admin?tab=messages" className="flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
-                          <span className="flex items-center gap-2">
-                            <Bell className="w-4 h-4" /> Messages
-                          </span>
-                          {unreadMessages > 0 && (
-                            <span className="min-w-[20px] h-5 bg-red-500 text-white text-xs font-bold flex items-center justify-center rounded-full px-1.5">
-                              {unreadMessages}
-                            </span>
-                          )}
                         </Link>
                       </>
                     )}
@@ -398,6 +412,32 @@ export default function Navbar() {
                   </NavLink>
                 )
               )}
+              {user && navLinksAuth.map((link) => (
+                <NavLink
+                  key={link.path}
+                  to={link.path!}
+                  className={({ isActive }) =>
+                    `px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                      isActive ? 'text-gold-400 bg-white/10' : 'text-slate-200 hover:text-white hover:bg-white/10'
+                    }`
+                  }
+                >
+                  {link.label}
+                </NavLink>
+              ))}
+              {navLinksPublic.map((link) => (
+                <NavLink
+                  key={link.path}
+                  to={link.path!}
+                  className={({ isActive }) =>
+                    `px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                      isActive ? 'text-gold-400 bg-white/10' : 'text-slate-200 hover:text-white hover:bg-white/10'
+                    }`
+                  }
+                >
+                  {link.label}
+                </NavLink>
+              ))}
               <div className="mt-2 pt-2 border-t border-white/10 flex flex-col gap-1.5">
                 {user ? (
                   <>
@@ -411,7 +451,7 @@ export default function Navbar() {
                     {unreadCount > 0 && (
                       <Link to="/profile" className="flex items-center justify-between px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 rounded-lg">
                         <span className="flex items-center gap-2"><Bell className="w-4 h-4" /> Notifications</span>
-                        <span className="bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{unreadCount > 9 ? '9+' : unreadCount}</span>
+                        <span className="bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{(unreadCount + (profile?.role === 'admin' ? adminUnreadMessages : 0)) > 9 ? '9+' : (unreadCount + (profile?.role === 'admin' ? adminUnreadMessages : 0))}</span>
                       </Link>
                     )}
                     {profile?.role === 'admin' && (

@@ -198,6 +198,27 @@ export type Transaction = {
   gateway_signature?: string | null;
 };
 
+export type BlogPost = {
+  id: string;
+  title: string;
+  slug: string;
+  hashtags: string[];
+  author_name: string;
+  author_id: string | null;
+  featured_image_url: string | null;
+  intro_text: string | null;
+  supporting_image_url: string | null;
+  body_text: string | null;
+  second_image_url: string | null;
+  conclusion_text: string | null;
+  takeaway: string | null;
+  youtube_url: string | null;
+  is_published: boolean;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type SiteSetting = {
   id: string;
   setting_key: string;

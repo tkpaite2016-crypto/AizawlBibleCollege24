@@ -2,9 +2,10 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   BookOpen, Bell, Users, Download, Image, ChevronRight,
-  Award, MapPin, Calendar, Star, ArrowRight, Megaphone, ChevronLeft
+  Award, MapPin, Calendar, Star, ArrowRight, Megaphone, ChevronLeft,
+  Newspaper, ArrowUpRight, User,
 } from 'lucide-react';
-import { supabase, Notice, Photo } from '../lib/supabase';
+import { supabase, Notice, Photo, BlogPost } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import DailyVerse from '../components/DailyVerse';
 
@@ -149,12 +150,71 @@ const categoryColor: Record<string, string> = {
   general: 'bg-slate-100 text-slate-700',
 };
 
+function BlogPreviewCard({ post }: { post: BlogPost }) {
+  const previewText = (post.intro_text || post.body_text || post.conclusion_text || '')
+    .split(/\n\s*\n/)[0] || '';
+  const words = previewText.trim().split(/\s+/).slice(0, 28).join(' ');
+  const truncated = words.length < previewText.trim().length ? `${words}…` : words;
+  const dateStr = post.published_at
+    ? new Date(post.published_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+    : new Date(post.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  return (
+    <Link
+      to={`/post/${post.slug}`}
+      className="group block rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+    >
+      {/* Featured image as background */}
+      <div className="relative h-48 overflow-hidden bg-slate-200">
+        {post.featured_image_url ? (
+          <img
+            src={post.featured_image_url}
+            alt={post.title}
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center bg-navy-100">
+            <Newspaper className="w-10 h-10 text-navy-300" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        {post.hashtags && post.hashtags.length > 0 && (
+          <span className="absolute top-3 left-3 inline-flex items-center gap-1 px-2 py-1 bg-gold-500 text-navy-950 text-xs font-semibold rounded-full">
+            #{post.hashtags[0]}
+          </span>
+        )}
+      </div>
+      {/* Content */}
+      <div className="p-5">
+        <div className="flex items-center gap-3 text-xs text-slate-500 mb-2">
+          <span className="inline-flex items-center gap-1">
+            <Calendar className="w-3.5 h-3.5 text-gold-500" />{dateStr}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <User className="w-3.5 h-3.5 text-gold-500" />{post.author_name}
+          </span>
+        </div>
+        <h3 className="font-serif font-bold text-navy-900 text-lg leading-snug mb-2 group-hover:text-gold-600 transition-colors line-clamp-2">
+          {post.title}
+        </h3>
+        <p className="text-sm text-slate-600 leading-relaxed line-clamp-3 mb-3">
+          {truncated}
+        </p>
+        <span className="inline-flex items-center gap-1 text-sm font-semibold text-navy-700 group-hover:text-gold-600 transition-colors">
+          Read more <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+        </span>
+      </div>
+    </Link>
+  );
+}
+
 export default function Home() {
   const { profile } = useAuth();
   const [notices, setNotices] = useState<Notice[]>([]);
   const [stats, setStats] = useState({ first: 0, second: 0, final: 0 });
   const [siteImages, setSiteImages] = useState<Record<string, string>>({});
   const [galleryPhotos, setGalleryPhotos] = useState<Photo[]>([]);
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
 
   // Default fallback images
   const defaultImages = {
@@ -193,6 +253,14 @@ export default function Home() {
       .then(({ data }) => setGalleryPhotos(data ?? []));
 
     supabase
+      .from('blog_posts')
+      .select('*')
+      .eq('is_published', true)
+      .order('published_at', { ascending: false, nullsFirst: false })
+      .limit(3)
+      .then(({ data }) => setBlogPosts(data ?? []));
+
+    supabase
       .from('site_settings')
       .select('*')
       .in('setting_key', ['home_hero_image', 'home_about_image', 'home_hero_opacity'])
@@ -211,7 +279,7 @@ export default function Home() {
     <div className="page-enter">
       {/* Hero */}
       <section
-        className="relative min-h-[85vh] flex items-center bg-hero-gradient overflow-hidden"
+        className="relative min-h-[50vh] flex items-center bg-hero-gradient overflow-hidden"
         style={{
           backgroundImage: `linear-gradient(135deg, rgba(17,22,64,${siteImages.home_hero_opacity || '0.95'}) 0%, rgba(30,42,138,${siteImages.home_hero_opacity || '0.88'}) 60%, rgba(34,54,216,${parseFloat(siteImages.home_hero_opacity || '0.88') * 0.97}) 100%), url('${siteImages.home_hero_image || defaultImages.home_hero_image}')`,
           backgroundSize: 'cover',
@@ -222,7 +290,7 @@ export default function Home() {
         <div className="absolute top-1/4 right-0 w-96 h-96 bg-gold-400/10 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-1/4 w-64 h-64 bg-navy-400/10 rounded-full blur-3xl" />
 
-        <div className="page-container relative z-10 py-20">
+        <div className="page-container relative z-10 py-12">
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gold-500/20 border border-gold-400/40 rounded-full mb-6">
               <Star className="w-3.5 h-3.5 text-gold-400" />
@@ -291,9 +359,6 @@ export default function Home() {
               </div>
               <h2 className="section-title">High-Priority Notices</h2>
             </div>
-            <Link to="/notices" className="hidden sm:flex items-center gap-1 text-navy-700 hover:text-navy-900 text-sm font-medium transition-colors">
-              View all <ChevronRight className="w-4 h-4" />
-            </Link>
           </div>
 
           {notices.length === 0 ? (
@@ -302,32 +367,34 @@ export default function Home() {
               <p>No high-priority notices at this time.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {notices.map((notice) => (
-                <div key={notice.id} className="card hover:shadow-md transition-shadow p-5 flex flex-col">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${priorityColor[notice.priority]}`}>
-                      {notice.priority.charAt(0).toUpperCase() + notice.priority.slice(1)} Priority
-                    </span>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${categoryColor[notice.category]}`}>
-                      {notice.category.charAt(0).toUpperCase() + notice.category.slice(1)}
-                    </span>
+                <div key={notice.id} className="group relative h-64 rounded-2xl overflow-hidden shadow-lg">
+                  <img
+                    src={notice.image_url || `https://images.pexels.com/photos/1595385/pexels-photo-1595385.jpeg?auto=compress&cs=tinysrgb&w=800`}
+                    alt={notice.title}
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+                  <div className="absolute inset-0 p-5 flex flex-col justify-end">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${priorityColor[notice.priority]}`}>
+                        {notice.priority.charAt(0).toUpperCase() + notice.priority.slice(1)}
+                      </span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${categoryColor[notice.category]}`}>
+                        {notice.category.charAt(0).toUpperCase() + notice.category.slice(1)}
+                      </span>
+                    </div>
+                    <h3 className="font-semibold text-white text-lg leading-snug mb-1">{notice.title}</h3>
+                    <p className="text-white/80 text-sm leading-relaxed line-clamp-2">{notice.content}</p>
+                    <p className="text-white/50 text-xs mt-2">
+                      {new Date(notice.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
                   </div>
-                  <h3 className="font-semibold text-navy-900 text-base leading-snug mb-2">{notice.title}</h3>
-                  <p className="text-slate-600 text-sm leading-relaxed flex-1 line-clamp-3">{notice.content}</p>
-                  <p className="text-slate-400 text-xs mt-3 pt-3 border-t border-slate-100">
-                    {new Date(notice.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  </p>
                 </div>
               ))}
             </div>
           )}
-
-          <div className="sm:hidden mt-6 text-center">
-            <Link to="/notices" className="btn-secondary">
-              View All Notices <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
         </div>
       </section>
 
@@ -335,6 +402,28 @@ export default function Home() {
       {galleryPhotos.length > 0 && (
         <section className="h-72 md:h-[480px] overflow-hidden">
           <GallerySlider photos={galleryPhotos} rounded={false} />
+        </section>
+      )}
+
+      {/* Blog / Articles preview */}
+      {blogPosts.length > 0 && (
+        <section className="py-16 md:py-20 bg-white">
+          <div className="page-container">
+            <div className="flex items-end justify-between mb-8">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Newspaper className="w-5 h-5 text-gold-500" />
+                  <span className="text-sm font-semibold text-gold-600 uppercase tracking-wide">From the Blog</span>
+                </div>
+                <h2 className="section-title">Latest Articles & Reflections</h2>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {blogPosts.map((post) => (
+                <BlogPreviewCard key={post.id} post={post} />
+              ))}
+            </div>
+          </div>
         </section>
       )}
 

@@ -3,6 +3,24 @@ import { MessageSquare, Send, Plus, X, Star, Pin, Lock, ChevronDown, ChevronUp, 
 import { supabase, ForumPost, ForumReply, Profile } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const sec = Math.floor(diff / 1000);
+  if (sec < 60) return 'just now';
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min} minute${min !== 1 ? 's' : ''} ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} hour${hr !== 1 ? 's' : ''} ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day} day${day !== 1 ? 's' : ''} ago`;
+  const week = Math.floor(day / 7);
+  if (week < 4) return `${week} week${week !== 1 ? 's' : ''} ago`;
+  const month = Math.floor(day / 30);
+  if (month < 12) return `${month} month${month !== 1 ? 's' : ''} ago`;
+  const year = Math.floor(day / 365);
+  return `${year} year${year !== 1 ? 's' : ''} ago`;
+}
+
 function RoleBadge({ profile }: { profile: Profile | undefined }) {
   if (!profile) return null;
   if (profile.role === 'admin') {
@@ -69,7 +87,20 @@ function PostCard({ post, profileMap, currentProfile }: {
       .select('*')
       .eq('post_id', post.id)
       .order('created_at', { ascending: true });
-    setReplies((data ?? []).map((r) => ({ ...r, author: profileMap[r.author_id] })));
+
+    if (data && data.length > 0) {
+      const replyAuthorIds = [...new Set(data.map((r) => r.author_id))];
+      const missingIds = replyAuthorIds.filter((id) => !profileMap[id]);
+      let updatedMap = profileMap;
+      if (missingIds.length > 0) {
+        const { data: replyProfiles } = await supabase.from('profiles').select('*').in('id', missingIds);
+        if (replyProfiles) {
+          updatedMap = { ...profileMap };
+          replyProfiles.forEach((p) => (updatedMap[p.id] = p));
+        }
+      }
+      setReplies(data.map((r) => ({ ...r, author: updatedMap[r.author_id] })));
+    }
     setLoadingReplies(false);
   }
 
@@ -147,7 +178,7 @@ function PostCard({ post, profileMap, currentProfile }: {
                     </div>
                     <p className="text-slate-600 text-sm">{reply.content}</p>
                     <p className="text-xs text-slate-400 mt-1">
-                      {new Date(reply.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {timeAgo(reply.created_at)}
                     </p>
                   </div>
                 </div>

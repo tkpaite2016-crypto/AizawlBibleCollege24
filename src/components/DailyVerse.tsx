@@ -135,7 +135,7 @@ export default function DailyVerse() {
     }
 
     // === LOGO ===
-    let logoBottom = 90;
+    let logoBottom = 60;
     try {
       const logoImg = await new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image();
@@ -186,11 +186,11 @@ export default function DailyVerse() {
     logoBottom += 24;
 
     // Date
-    ctx.fillStyle = 'rgba(232,212,139,0.7)';
-    ctx.font = 'italic 15px Georgia, serif';
+    ctx.fillStyle = 'rgba(232,212,139,0.8)';
+    ctx.font = 'italic 20px Georgia, serif';
     const dateStr = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     ctx.fillText(dateStr, W / 2, logoBottom);
-    logoBottom += 18;
+    logoBottom += 24;
 
     drawHRule(logoBottom, 260, 0.4);
     logoBottom += 18;
@@ -231,19 +231,19 @@ export default function DailyVerse() {
 
     // Reference
     ctx.fillStyle = '#C9A227';
-    ctx.font = `bold ${Math.min(28, fontSize - 4)}px Georgia, serif`;
-    ctx.fillText(`\u2014 ${verse.reference}`, W / 2, afterVerseY + 36);
+    ctx.font = `bold ${Math.min(36, fontSize + 2)}px Georgia, serif`;
+    ctx.fillText(`\u2014 ${verse.reference}`, W / 2, afterVerseY + 40);
 
     // NIV label
-    ctx.fillStyle = 'rgba(201,162,39,0.55)';
-    ctx.font = 'italic 15px Georgia, serif';
-    ctx.fillText('(New International Version)', W / 2, afterVerseY + 60);
+    ctx.fillStyle = 'rgba(201,162,39,0.7)';
+    ctx.font = 'italic 20px Georgia, serif';
+    ctx.fillText('(New International Version)', W / 2, afterVerseY + 68);
 
     // === FOOTER ===
-    drawHRule(H - 58, 120, 0.35);
-    ctx.fillStyle = 'rgba(232,212,139,0.45)';
-    ctx.font = '14px Arial, sans-serif';
-    ctx.fillText('aizawlbiblecollege.in', W / 2, H - 40);
+    drawHRule(H - 62, 140, 0.35);
+    ctx.fillStyle = 'rgba(232,212,139,0.65)';
+    ctx.font = 'bold 22px Arial, sans-serif';
+    ctx.fillText('https://aizawlbiblecollege.in', W / 2, H - 38);
 
     // Convert to blob URL
     const blob = await new Promise<Blob | null>((resolve) => {

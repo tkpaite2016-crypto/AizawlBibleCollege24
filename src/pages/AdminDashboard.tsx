@@ -867,10 +867,6 @@ export default function AdminDashboard() {
                           <Award className="w-4 h-4" />
                         </Link>
                     )}
-                    <Link to={`/admin/users/${u.id}`}
-                      className="inline-flex items-center justify-center w-8 h-8 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors" title="View Profile">
-                        <Users className="w-4 h-4" />
-                      </Link>
                     <button onClick={() => confirmDeleteUser(u)}
                       className="inline-flex items-center justify-center w-8 h-8 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors" title="Delete User">
                         <Trash2 className="w-4 h-4" />

@@ -6,13 +6,15 @@ import { subscribeToPush, unsubscribeFromPush, listenForForegroundPush, isNotifi
 type NotificationContextType = {
   notifications: Notification[];
   unreadCount: number;
+  adminUnreadMessages: number;
   loading: boolean;
   pushSupported: boolean;
   pushEnabled: boolean;
+  pushError: string | null;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
-  enablePush: () => Promise<boolean>;
-  disablePush: () => Promise<boolean>;
+  enablePush: () => Promise<{ success: boolean; error?: string }>;
+  disablePush: () => Promise<{ success: boolean; error?: string }>;
   refresh: () => void;
 };
 
@@ -22,9 +24,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const { profile, user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [adminUnreadMessages, setAdminUnreadMessages] = useState(0);
   const [loading, setLoading] = useState(false);
   const [pushSupported, setPushSupported] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const loadNotifications = useCallback(async () => {
@@ -39,8 +43,20 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const notifs = (data as Notification[]) ?? [];
     setNotifications(notifs);
     setUnreadCount(notifs.filter((n) => !n.is_read).length);
+
+    // Admin: load unread contact messages count
+    if (profile.role === 'admin') {
+      const { count } = await supabase
+        .from('contact_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_read', false);
+      setAdminUnreadMessages(count ?? 0);
+    } else {
+      setAdminUnreadMessages(0);
+    }
+
     setLoading(false);
-  }, [profile?.id]);
+  }, [profile?.id, profile?.role]);
 
   // Load notifications + set up realtime subscription
   useEffect(() => {
@@ -105,7 +121,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       if (!mounted) return;
       setPushSupported(supported);
 
-      if (supported && Notification.permission === 'granted' && profile?.id) {
+      if (supported && profile?.id) {
         const { data } = await supabase
           .from('push_subscriptions')
           .select('id')
@@ -143,18 +159,28 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     setUnreadCount(0);
   }, [profile?.id]);
 
-  const enablePush = useCallback(async () => {
-    if (!profile?.id) return false;
-    const success = await subscribeToPush(profile.id);
-    setPushEnabled(success);
-    return success;
+  const enablePush = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    if (!profile?.id) return { success: false, error: 'Not logged in' };
+    setPushError(null);
+    const result = await subscribeToPush(profile.id);
+    if (result.success) {
+      setPushEnabled(true);
+    } else {
+      setPushError(result.error || 'Failed to enable push notifications');
+    }
+    return result;
   }, [profile?.id]);
 
-  const disablePush = useCallback(async () => {
-    if (!profile?.id) return false;
-    const success = await unsubscribeFromPush(profile.id);
-    if (success) setPushEnabled(false);
-    return success;
+  const disablePush = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    if (!profile?.id) return { success: false, error: 'Not logged in' };
+    setPushError(null);
+    const result = await unsubscribeFromPush(profile.id);
+    if (result.success) {
+      setPushEnabled(false);
+    } else {
+      setPushError(result.error || 'Failed to disable push notifications');
+    }
+    return result;
   }, [profile?.id]);
 
   return (
@@ -162,9 +188,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       value={{
         notifications,
         unreadCount,
+        adminUnreadMessages,
         loading,
         pushSupported,
         pushEnabled,
+        pushError,
         markAsRead,
         markAllAsRead,
         enablePush,

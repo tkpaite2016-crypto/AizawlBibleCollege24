@@ -31,6 +31,9 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import CancellationAndRefunds from './pages/CancellationAndRefunds';
 import ShippingAndDelivery from './pages/ShippingAndDelivery';
 import CertificatePreview from './pages/CertificatePreview';
+import BlogEditor from './pages/BlogEditor';
+import BlogPostPage from './pages/BlogPostPage';
+import BlogList from './pages/BlogList';
 
 function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string[] }) {
   const { user, profile, loading } = useAuth();
@@ -74,6 +77,16 @@ export default function App() {
           <Route path="/academics" element={<AcademicInfo />} />
           <Route path="/contact" element={<ContactUs />} />
           <Route path="/board" element={<BoardOfManagement />} />
+          <Route path="/blog" element={<BlogList />} />
+          <Route path="/post/:slug" element={<BlogPostPage />} />
+          <Route
+            path="/admin/blog/new"
+            element={<ProtectedRoute requiredRole={['admin', 'faculty']}><BlogEditor /></ProtectedRoute>}
+          />
+          <Route
+            path="/admin/blog/edit/:id"
+            element={<ProtectedRoute requiredRole={['admin', 'faculty']}><BlogEditor /></ProtectedRoute>}
+          />
           <Route path="/terms" element={<TermsAndConditions />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/refunds" element={<CancellationAndRefunds />} />
