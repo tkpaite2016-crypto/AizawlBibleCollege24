@@ -44,8 +44,9 @@ export default function Teachers() {
     const [profilesRes, teachersRes, boardRes] = await Promise.all([
       supabase
         .from('profiles')
-        .select('id, full_name, qualification, subject_in_charge, address, bio, avatar_url, email, phone, position')
+        .select('id, full_name, qualification, subject_in_charge, address, bio, avatar_url, email, phone, position, display_order')
         .eq('role', 'faculty')
+        .order('display_order')
         .order('full_name'),
       supabase.from('teachers').select('*').eq('is_current', false).order('display_order'),
       supabase.from('board_members').select('*').order('display_order'),

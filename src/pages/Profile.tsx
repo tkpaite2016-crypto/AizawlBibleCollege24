@@ -838,32 +838,35 @@ export default function Profile() {
                   <div className="flex justify-center py-3"><Loader className="w-4 h-4 animate-spin text-amber-500" /></div>
                 ) : (
                   <div className="space-y-2">
-                    {notifications.slice(0, 5).map((n) => (
-                      <div
-                        key={n.id}
-                        onClick={() => !n.is_read && markNotifRead(n.id)}
-                        className={`p-3 rounded-lg border transition-all cursor-pointer ${
-                          n.is_read
-                            ? 'bg-white border-slate-100 opacity-70'
-                            : 'bg-white border-amber-300 shadow-sm'
-                        }`}
-                      >
-                        <div className="flex items-start gap-2">
-                          <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${n.is_read ? 'bg-slate-300' : 'bg-amber-500'}`} />
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium ${n.is_read ? 'text-slate-600' : 'text-navy-900'}`}>{n.title}</p>
-                            <p className="text-xs text-slate-500 mt-0.5">{n.message}</p>
-                            <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {new Date(n.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                            </p>
+                    {notifications.filter((n) => !n.is_read).length === 0 ? (
+                      <div className="flex flex-col items-center py-4 text-center">
+                        <BellOff className="w-7 h-7 text-slate-300 mb-1.5" />
+                        <p className="text-xs text-slate-400">No new notifications</p>
+                      </div>
+                    ) : (
+                      notifications.filter((n) => !n.is_read).slice(0, 5).map((n) => (
+                        <div
+                          key={n.id}
+                          onClick={() => markNotifRead(n.id)}
+                          className="p-3 rounded-lg border bg-white border-amber-300 shadow-sm transition-all cursor-pointer hover:bg-amber-50"
+                        >
+                          <div className="flex items-start gap-2">
+                            <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0 bg-amber-500" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-navy-900">{n.title}</p>
+                              <p className="text-xs text-slate-500 mt-0.5">{n.message}</p>
+                              <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {new Date(n.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                    {notifications.length > 5 && (
+                      ))
+                    )}
+                    {notifications.filter((n) => !n.is_read).length > 5 && (
                       <p className="text-xs text-slate-400 text-center pt-1">
-                        Showing 5 of {notifications.length} notifications
+                        Showing 5 of {notifications.filter((n) => !n.is_read).length} unread
                       </p>
                     )}
                   </div>

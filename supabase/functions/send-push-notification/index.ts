@@ -78,17 +78,16 @@ Deno.serve(async (req: Request) => {
 
     const fcmEndpoint = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
 
+    // Data-only payload: no "notification" field so FCM does NOT auto-display.
+    // The service worker's onBackgroundMessage handles the single display.
+    // Sending both notification + data causes two notifications (FCM auto-display + SW display).
     const notificationPayload = {
-      notification: {
-        title,
-        body,
-        icon: icon || "/logo.png",
-      },
       data: {
         title,
         body,
         click_action: click_action || "/",
         icon: icon || "/logo.png",
+        tag: "abc-notification",
       },
     };
 

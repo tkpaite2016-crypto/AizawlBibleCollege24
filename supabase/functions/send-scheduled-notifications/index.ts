@@ -110,14 +110,15 @@ async function getAccessToken(serviceAccountJson: string): Promise<string> {
 
 async function sendFcmToToken(accessToken: string, projectId: string, token: string, title: string, body: string, url: string): Promise<{ ok: boolean; stale: boolean }> {
   const endpoint = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
+  // Data-only payload: omit "notification" and "webpush.notification" so FCM does NOT
+  // auto-display a notification. The SW's onBackgroundMessage handles the single display.
+  // Having both notification + data causes two visible notifications (FCM auto + SW).
   const message = {
     message: {
       token,
-      notification: { title, body },
-      data: { title, body, click_action: url },
+      data: { title, body, click_action: url, icon: "/logo.png", tag: "abc-notification" },
       webpush: {
         fcmOptions: { link: url },
-        notification: { icon: "/logo.png", badge: "/logo.png" },
       },
     },
   };

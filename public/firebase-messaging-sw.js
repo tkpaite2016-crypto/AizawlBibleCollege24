@@ -20,13 +20,14 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Deduplication: track the last notification shown to prevent duplicates
+// Deduplication: track the last notification shown to prevent duplicates.
+// Primary fix is data-only FCM messages (no "notification" field in payload) —
+// this window is a safety net for any edge cases.
 let lastNotificationKey = null;
 let lastNotificationTime = 0;
-const DEDUP_WINDOW_MS = 5000; // 5 seconds
+const DEDUP_WINDOW_MS = 30000; // 30 seconds
 
 function getNotificationKey(payload) {
-  // Create a unique key from title + body to detect duplicates
   const title = payload.data?.title || payload.notification?.title || '';
   const body = payload.data?.body || payload.notification?.body || '';
   return `${title}||${body}`;
@@ -36,7 +37,7 @@ function showNotification(payload) {
   const key = getNotificationKey(payload);
   const now = Date.now();
 
-  // Skip if we just showed this exact notification (within dedup window)
+  // Skip if we just showed this exact notification within the dedup window
   if (key === lastNotificationKey && (now - lastNotificationTime) < DEDUP_WINDOW_MS) {
     console.log('[SW] Duplicate notification suppressed:', key);
     return;
@@ -46,12 +47,15 @@ function showNotification(payload) {
   lastNotificationTime = now;
 
   const notificationTitle = payload.data?.title || payload.notification?.title || 'Aizawl Bible College';
-  const notificationTag = payload.data?.tag || 'abc-notification'; // tag replaces previous with same tag
+  // Consistent tag: replaces any previous notification with the same tag so duplicates
+  // never stack in the notification tray even if the dedup check misses one.
+  const notificationTag = payload.data?.tag || 'abc-notification';
   const notificationOptions = {
     body: payload.data?.body || payload.notification?.body || '',
     icon: '/logo.png',
     badge: '/logo.png',
     tag: notificationTag,
+    renotify: true,
     data: {
       click_action: payload.data?.click_action || '/',
       ...payload.data,
