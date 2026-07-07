@@ -434,6 +434,11 @@ export default function AdminDashboard() {
     setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, pata_reg_no: pataRegNo || null } : u));
   }
 
+  async function updateFacultyOrder(userId: string, order: number) {
+    await supabase.from('profiles').update({ display_order: order }).eq('id', userId);
+    setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, display_order: order } : u));
+  }
+
   async function banUser(userId: string) {
     await supabase.from('profiles').update({ is_banned: true }).eq('id', userId);
     setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, is_banned: true } : u));
@@ -609,6 +614,14 @@ export default function AdminDashboard() {
     await supabase.from('teachers').delete().eq('id', id);
     setTeachers((prev) => prev.filter((t) => t.id !== id));
     setConfirmConfig(null);
+  }
+
+  async function updateTeacherOrder(id: string, order: number) {
+    await supabase.from('teachers').update({ display_order: order }).eq('id', id);
+    setTeachers((prev) =>
+      prev.map((t) => t.id === id ? { ...t, display_order: order } : t)
+          .sort((a, b) => a.display_order - b.display_order)
+    );
   }
 
   // ── Applications ─────────────────────────────────────────────
@@ -1156,12 +1169,12 @@ export default function AdminDashboard() {
                           <th className="px-4 py-3 text-left">Theme</th>
                           <th className="px-4 py-3 text-left">Qualification</th>
                           <th className="px-4 py-3 text-left">Subject</th>
-                          <th className="px-4 py-3 text-left">Joined</th>
+                          <th className="px-4 py-3 text-left">Order</th>
                           <th className="px-4 py-3 text-left">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {facultyUsers.map((u) => (
+                        {[...facultyUsers].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)).map((u) => (
                           <tr key={u.id} className="hover:bg-slate-50 transition-colors">
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
@@ -1201,8 +1214,14 @@ export default function AdminDashboard() {
                             </td>
                             <td className="px-4 py-3 text-sm text-slate-700">{u.qualification || '—'}</td>
                             <td className="px-4 py-3 text-sm text-slate-700">{u.subject_in_charge || '—'}</td>
-                            <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">
-                              {new Date(u.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            <td className="px-4 py-3">
+                              <input
+                                type="number"
+                                defaultValue={u.display_order ?? 0}
+                                onBlur={(e) => updateFacultyOrder(u.id, parseInt(e.target.value) || 0)}
+                                className="w-16 text-xs border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-navy-500 text-center"
+                                title="Display order (lower = first)"
+                              />
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-1 flex-nowrap whitespace-nowrap">
@@ -1217,10 +1236,6 @@ export default function AdminDashboard() {
                                     <Ban className="w-4 h-4" />
                                   </button>
                                 )}
-                                <Link to={`/admin/users/${u.id}`}
-                                  className="inline-flex items-center justify-center w-8 h-8 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors" title="View Profile">
-                                  <Users className="w-4 h-4" />
-                                </Link>
                                 <button onClick={() => confirmDeleteUser(u)}
                                   className="inline-flex items-center justify-center w-8 h-8 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors" title="Delete User">
                                   <Trash2 className="w-4 h-4" />
@@ -1296,10 +1311,22 @@ export default function AdminDashboard() {
                           <p className="text-sm text-slate-500">{t.qualification || '—'} {t.subject_in_charge ? `· ${t.subject_in_charge}` : ''}</p>
                           <p className="text-xs text-slate-400">{t.is_current ? 'Current' : 'Former'}</p>
                         </div>
-                        <button onClick={() => setConfirmConfig({ title: 'Delete Faculty', message: `Delete ${t.full_name}?`, confirmLabel: 'Delete', danger: true, onConfirm: () => deleteTeacher(t.id) })}
-                          className="p-1.5 text-red-500 hover:text-red-700 rounded hover:bg-red-50 transition-colors">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="flex flex-col items-center gap-0.5">
+                            <label className="text-[10px] text-slate-400 uppercase tracking-wide">Order</label>
+                            <input
+                              type="number"
+                              defaultValue={t.display_order}
+                              onBlur={(e) => updateTeacherOrder(t.id, parseInt(e.target.value) || 0)}
+                              className="w-14 text-xs border border-slate-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-navy-500 text-center"
+                              title="Display order (lower = first)"
+                            />
+                          </div>
+                          <button onClick={() => setConfirmConfig({ title: 'Delete Faculty', message: `Delete ${t.full_name}?`, confirmLabel: 'Delete', danger: true, onConfirm: () => deleteTeacher(t.id) })}
+                            className="p-1.5 text-red-500 hover:text-red-700 rounded hover:bg-red-50 transition-colors">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

@@ -31,13 +31,13 @@ export async function subscribeToPush(userId: string): Promise<{ success: boolea
     return { success: false, error };
   }
 
-  // Upsert the token — unique constraint on (user_id, fcm_token) prevents duplicates
+  // Delete ALL existing tokens for this user, then insert the fresh one.
+  // This prevents accumulation of stale tokens across browser sessions.
+  await supabase.from('push_subscriptions').delete().eq('user_id', userId);
+
   const { error: dbError } = await supabase
     .from('push_subscriptions')
-    .upsert(
-      { user_id: userId, fcm_token: result.token, device_type: 'web' },
-      { onConflict: 'user_id,fcm_token' }
-    );
+    .insert({ user_id: userId, fcm_token: result.token, device_type: 'web' });
 
   if (dbError) {
     console.error('Failed to save push subscription:', dbError.message);

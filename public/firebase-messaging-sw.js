@@ -20,13 +20,38 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Handle background push notifications (when the site is closed)
-messaging.onBackgroundMessage((payload) => {
+// Deduplication: track the last notification shown to prevent duplicates
+let lastNotificationKey = null;
+let lastNotificationTime = 0;
+const DEDUP_WINDOW_MS = 5000; // 5 seconds
+
+function getNotificationKey(payload) {
+  // Create a unique key from title + body to detect duplicates
+  const title = payload.data?.title || payload.notification?.title || '';
+  const body = payload.data?.body || payload.notification?.body || '';
+  return `${title}||${body}`;
+}
+
+function showNotification(payload) {
+  const key = getNotificationKey(payload);
+  const now = Date.now();
+
+  // Skip if we just showed this exact notification (within dedup window)
+  if (key === lastNotificationKey && (now - lastNotificationTime) < DEDUP_WINDOW_MS) {
+    console.log('[SW] Duplicate notification suppressed:', key);
+    return;
+  }
+
+  lastNotificationKey = key;
+  lastNotificationTime = now;
+
   const notificationTitle = payload.data?.title || payload.notification?.title || 'Aizawl Bible College';
+  const notificationTag = payload.data?.tag || 'abc-notification'; // tag replaces previous with same tag
   const notificationOptions = {
     body: payload.data?.body || payload.notification?.body || '',
     icon: '/logo.png',
     badge: '/logo.png',
+    tag: notificationTag,
     data: {
       click_action: payload.data?.click_action || '/',
       ...payload.data,
@@ -34,6 +59,12 @@ messaging.onBackgroundMessage((payload) => {
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
+}
+
+// Handle background push notifications (when the site is closed or in background)
+// This is the PRIMARY handler for FCM messages
+messaging.onBackgroundMessage((payload) => {
+  showNotification(payload);
 });
 
 // Handle notification click — open the app at the target URL
@@ -58,22 +89,4 @@ self.addEventListener('notificationclick', (event) => {
         }
       })
   );
-});
-
-// Handle push events directly (fallback for browsers that don't route through FCM)
-self.addEventListener('push', (event) => {
-  if (event.data) {
-    const payload = event.data.json();
-    const notificationTitle = payload.data?.title || payload.notification?.title || 'Aizawl Bible College';
-    const notificationOptions = {
-      body: payload.data?.body || payload.notification?.body || '',
-      icon: '/logo.png',
-      badge: '/logo.png',
-      data: {
-        click_action: payload.data?.click_action || '/',
-        ...payload.data,
-      },
-    };
-    event.waitUntil(self.registration.showNotification(notificationTitle, notificationOptions));
-  }
 });

@@ -1,5 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2.45.0";
-import { crypto } from "node:crypto";
+import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,10 +37,40 @@ function getDailyVerse(): { verse: string; reference: string } {
   return bibleVerses[dayOfYear % bibleVerses.length];
 }
 
+function base64url(input: string | ArrayBuffer): string {
+  let bytes: Uint8Array;
+  if (typeof input === "string") {
+    bytes = new TextEncoder().encode(input);
+  } else {
+    bytes = new Uint8Array(input);
+  }
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function importPrivateKey(pemKey: string): Promise<CryptoKey> {
+  const pemContents = pemKey
+    .replace(/-----BEGIN PRIVATE KEY-----/, "")
+    .replace(/-----END PRIVATE KEY-----/, "")
+    .replace(/\s/g, "");
+
+  const binaryDer = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
+
+  return crypto.subtle.importKey(
+    "pkcs8",
+    binaryDer,
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+}
+
 async function getAccessToken(serviceAccountJson: string): Promise<string> {
   const sa = JSON.parse(serviceAccountJson);
   const now = Math.floor(Date.now() / 1000);
-  const expiry = now + 3600;
 
   const header = { alg: "RS256", typ: "JWT" };
   const payload = {
@@ -49,24 +78,20 @@ async function getAccessToken(serviceAccountJson: string): Promise<string> {
     scope: "https://www.googleapis.com/auth/firebase.messaging",
     aud: "https://oauth2.googleapis.com/token",
     iat: now,
-    exp: expiry,
+    exp: now + 3600,
   };
 
-  const encoder = new TextEncoder();
-  const headerB64 = btoa(JSON.stringify(header)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-  const payloadB64 = btoa(JSON.stringify(payload)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+  const headerB64 = base64url(JSON.stringify(header));
+  const payloadB64 = base64url(JSON.stringify(payload));
   const unsignedToken = `${headerB64}.${payloadB64}`;
 
-  const keyData = crypto.createPrivateKey({
-    key: sa.private_key,
-    format: "pem",
-  });
-  const signer = crypto.createSign("RSA-SHA256");
-  signer.update(unsignedToken);
-  const signature = signer.sign(keyData);
-  const signatureB64 = signature.toString("base64url");
-
-  const jwt = `${unsignedToken}.${signatureB64}`;
+  const privateKey = await importPrivateKey(sa.private_key);
+  const signature = await crypto.subtle.sign(
+    "RSASSA-PKCS1-v1_5",
+    privateKey,
+    new TextEncoder().encode(unsignedToken)
+  );
+  const jwt = `${unsignedToken}.${base64url(signature)}`;
 
   const tokenResp = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -83,11 +108,11 @@ async function getAccessToken(serviceAccountJson: string): Promise<string> {
   return tokenData.access_token;
 }
 
-async function sendFcmMessage(accessToken: string, projectId: string, token: string, title: string, body: string, url: string): Promise<boolean> {
+async function sendFcmToToken(accessToken: string, projectId: string, token: string, title: string, body: string, url: string): Promise<{ ok: boolean; stale: boolean }> {
   const endpoint = `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`;
   const message = {
     message: {
-      token: token,
+      token,
       notification: { title, body },
       data: { title, body, click_action: url },
       webpush: {
@@ -106,12 +131,12 @@ async function sendFcmMessage(accessToken: string, projectId: string, token: str
     body: JSON.stringify(message),
   });
 
-  if (!resp.ok) {
-    const errText = await resp.text();
-    console.error(`FCM send failed for token ${token.slice(0, 20)}...: ${errText}`);
-    return false;
-  }
-  return true;
+  if (resp.ok) return { ok: true, stale: false };
+
+  const errText = await resp.text();
+  const stale = errText.includes("UNREGISTERED") || errText.includes("invalid-registration");
+  console.error(`FCM failed for token ...${token.slice(-8)}: ${errText}`);
+  return { ok: false, stale };
 }
 
 Deno.serve(async (req: Request) => {
@@ -135,29 +160,10 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Get all push subscriptions
-    const { data: subscriptions, error: subError } = await supabase
-      .from("push_subscriptions")
-      .select("fcm_token, user_id");
-
-    if (subError) {
-      return new Response(JSON.stringify({ error: subError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (!subscriptions || subscriptions.length === 0) {
-      return new Response(JSON.stringify({ sent: 0, message: "No push subscriptions found" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const accessToken = await getAccessToken(serviceAccountJson);
-
-    // Determine notification type from query param or body
     const url = new URL(req.url);
     const type = url.searchParams.get("type") || "daily_verse";
+    // Custom label for the notification title (e.g. "Morning Verse", "Noon Verse")
+    const label = url.searchParams.get("label") || "";
 
     let title = "";
     let body = "";
@@ -165,7 +171,7 @@ Deno.serve(async (req: Request) => {
 
     if (type === "daily_verse") {
       const dv = getDailyVerse();
-      title = "ABC Daily Verse";
+      title = label ? `ABC | ${label}` : "ABC Daily Verse";
       body = `"${dv.verse}" — ${dv.reference} (NIV)`;
       clickUrl = "/";
     } else if (type === "notice") {
@@ -182,30 +188,59 @@ Deno.serve(async (req: Request) => {
       clickUrl = "/";
     }
 
-    // Send to all tokens
-    const tokens = [...new Set(subscriptions.map((s) => s.fcm_token).filter(Boolean))] as string[];
-    let successCount = 0;
-    const failedTokens: string[] = [];
+    // Fetch subscriptions ordered by newest first (per user we use newest token only)
+    const { data: subscriptions, error: subError } = await supabase
+      .from("push_subscriptions")
+      .select("fcm_token, user_id, created_at")
+      .order("created_at", { ascending: false });
 
-    for (const token of tokens) {
-      const ok = await sendFcmMessage(accessToken, projectId, token, title, body, clickUrl);
-      if (ok) {
-        successCount++;
-      } else {
-        failedTokens.push(token);
+    if (subError) {
+      return new Response(JSON.stringify({ error: subError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!subscriptions || subscriptions.length === 0) {
+      return new Response(JSON.stringify({ sent: 0, message: "No push subscriptions found" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Deduplicate: one token per user (the most recently registered one)
+    const seenUsers = new Set<string>();
+    const uniqueSubscriptions: { fcm_token: string; user_id: string }[] = [];
+    for (const sub of subscriptions) {
+      if (!seenUsers.has(sub.user_id)) {
+        seenUsers.add(sub.user_id);
+        uniqueSubscriptions.push(sub);
       }
     }
 
-    // Clean up invalid tokens (remove failed subscriptions)
-    if (failedTokens.length > 0) {
+    const accessToken = await getAccessToken(serviceAccountJson);
+
+    let successCount = 0;
+    const staleTokens: string[] = [];
+
+    for (const sub of uniqueSubscriptions) {
+      const result = await sendFcmToToken(accessToken, projectId, sub.fcm_token, title, body, clickUrl);
+      if (result.ok) {
+        successCount++;
+      } else if (result.stale) {
+        staleTokens.push(sub.fcm_token);
+      }
+    }
+
+    // Clean up stale tokens
+    if (staleTokens.length > 0) {
       await supabase
         .from("push_subscriptions")
         .delete()
-        .in("fcm_token", failedTokens);
+        .in("fcm_token", staleTokens);
     }
 
-    // Insert notifications into the notifications table for each user
-    const userIds = [...new Set(subscriptions.map((s) => s.user_id).filter(Boolean))] as string[];
+    // Insert ONE notification record per user
+    const userIds = uniqueSubscriptions.map((s) => s.user_id);
     if (userIds.length > 0) {
       const notifRows = userIds.map((uid) => ({
         user_id: uid,
@@ -219,13 +254,15 @@ Deno.serve(async (req: Request) => {
 
     return new Response(JSON.stringify({
       sent: successCount,
-      failed: failedTokens.length,
+      failed: uniqueSubscriptions.length - successCount,
+      stale_removed: staleTokens.length,
       type,
-      total_tokens: tokens.length,
+      label,
+      total_users: uniqueSubscriptions.length,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error("Scheduled notification error:", err);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,

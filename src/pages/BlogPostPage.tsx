@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, User, Loader, AlertCircle, Hash, X, Youtube } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Loader, AlertCircle, Hash, X, Maximize2 } from 'lucide-react';
 import { supabase, BlogPost } from '../lib/supabase';
 
 function renderParagraphs(text: string | null): string[] {
@@ -50,6 +50,7 @@ export default function BlogPostPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const playerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -104,7 +105,7 @@ export default function BlogPostPage() {
 
   return (
     <article className="page-enter">
-      <div className="page-container py-10 md:py-14 max-w-3xl">
+      <div className="page-container py-10 md:py-14 max-w-3xl lg:max-w-5xl xl:max-w-6xl">
         {/* Back button */}
         <button
           onClick={() => navigate(-1)}
@@ -143,17 +144,48 @@ export default function BlogPostPage() {
           </span>
         </div>
 
-        {/* YouTube embed — 45% width, only fullscreen enabled */}
+        {/* YouTube embed — custom branded player */}
         {ytId && (
-          <div className="mb-8 flex justify-center">
-            <div className="w-[45%] rounded-2xl overflow-hidden shadow-lg" style={{ aspectRatio: '16 / 9' }}>
-              <iframe
-                src={`https://www.youtube.com/embed/${ytId}?controls=0&modestbranding=1&rel=0`}
-                title={post.title}
-                className="w-full h-full"
-                allow="fullscreen"
-                allowFullScreen
-              />
+          <div className="mb-10 flex justify-center">
+            <div className="relative group w-full sm:w-[85%] lg:w-[65%]">
+              {/* Animated glow ring */}
+              <div className="absolute -inset-[3px] rounded-[22px] bg-gradient-to-r from-gold-400 via-navy-600 to-gold-500 opacity-60 group-hover:opacity-90 blur-[4px] transition-opacity duration-700 animate-pulse" />
+              {/* Static ring border */}
+              <div className="absolute -inset-[1.5px] rounded-[21px] bg-gradient-to-r from-gold-300 via-navy-500 to-gold-400 opacity-80" />
+              {/* Player card */}
+              <div
+                ref={playerRef}
+                className="relative rounded-[20px] overflow-hidden bg-black shadow-2xl"
+                style={{ aspectRatio: '16 / 9', boxShadow: '0 25px 60px rgba(0,0,0,0.45), 0 8px 20px rgba(0,0,0,0.3)' }}
+              >
+                {/* iframe scaled up slightly to clip YouTube watermark from edges */}
+                <iframe
+                  src={`https://www.youtube.com/embed/${ytId}?controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3`}
+                  title={post.title}
+                  className="absolute inset-0 w-full h-full"
+                  style={{ transform: 'scale(1.07)', transformOrigin: 'center' }}
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowFullScreen
+                />
+                {/* Bottom gradient overlay — hides YouTube branding bar */}
+                <div className="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-black/80 to-transparent pointer-events-none" />
+                {/* Custom fullscreen button */}
+                <button
+                  onClick={() => {
+                    if (playerRef.current) {
+                      if (document.fullscreenElement) {
+                        document.exitFullscreen();
+                      } else {
+                        playerRef.current.requestFullscreen();
+                      }
+                    }
+                  }}
+                  className="absolute bottom-2.5 right-3 z-10 p-1.5 bg-black/60 hover:bg-black/90 text-white rounded-lg transition-all duration-200 hover:scale-110 border border-white/10 backdrop-blur-sm"
+                  title="Fullscreen"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         )}

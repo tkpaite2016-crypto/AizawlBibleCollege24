@@ -34,6 +34,7 @@ export type Profile = {
   profile_theme: string | null;
   show_transactions_public: boolean;
   certificate_id: string | null;
+  display_order: number;
 };
 
 export type Notification = {

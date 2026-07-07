@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { BookOpen, Share2, Check, Download, Loader } from 'lucide-react';
+import { BookOpen, Share2, Check, Download, Loader, Copy, CheckCircle } from 'lucide-react';
 
 // Collection of Bible verses (NIV)
 const bibleVerses = [
@@ -371,47 +371,40 @@ export default function DailyVerse() {
               </div>
 
               {/* Share buttons */}
-              <div className="flex items-center gap-3 mt-6 pt-5 border-t border-white/10">
+              <div className="flex items-center gap-2 mt-6 pt-5 border-t border-white/10">
                 <button
                   onClick={handleShareAsImage}
                   disabled={generating}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-gold-500 hover:bg-gold-400 text-navy-900 font-semibold rounded-xl text-sm transition-colors disabled:opacity-70"
+                  className="p-2.5 bg-gold-500 hover:bg-gold-400 text-navy-900 rounded-xl transition-colors disabled:opacity-70"
+                  title="Share as Image"
                 >
                   {generating ? (
-                    <>
-                      <Loader className="w-4 h-4 animate-spin" />
-                      Generating...
-                    </>
+                    <Loader className="w-5 h-5 animate-spin" />
                   ) : (
-                    <>
-                      <Share2 className="w-4 h-4" />
-                      Share as Image
-                    </>
+                    <Share2 className="w-5 h-5" />
                   )}
                 </button>
                 <button
                   onClick={handleDownload}
                   disabled={generating}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-medium rounded-xl text-sm transition-colors disabled:opacity-70"
+                  className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors disabled:opacity-70"
+                  title="Download Image"
                 >
-                  <Download className="w-4 h-4" />
-                  Download
+                  <Download className="w-5 h-5" />
                 </button>
                 <button
                   onClick={handleCopyText}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  className={`p-2.5 rounded-xl transition-all ${
                     copied
                       ? 'bg-green-500/20 text-green-400'
                       : 'bg-white/10 text-white hover:bg-white/20'
                   }`}
+                  title={copied ? 'Copied!' : 'Copy Text'}
                 >
                   {copied ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      Copied!
-                    </>
+                    <CheckCircle className="w-5 h-5" />
                   ) : (
-                    'Copy Text'
+                    <Copy className="w-5 h-5" />
                   )}
                 </button>
               </div>
