@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { MapPin, Briefcase, Award, BookOpen, User, Mail, Phone, Users } from 'lucide-react';
-import { supabase, Profile, Teacher } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 
 type FilterType = 'current' | 'former' | 'board';
 

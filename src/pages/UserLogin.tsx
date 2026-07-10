@@ -25,6 +25,14 @@ export default function UserLogin() {
     }
   }, [searchParams]);
 
+  function getPostLoginDestination() {
+    const redirect = searchParams.get('redirect');
+    if (redirect) return redirect;
+    const openProfile = searchParams.get('open_profile');
+    if (openProfile === 'true') return '/?open_profile=true';
+    return '/';
+  }
+
   async function handleAutoLogin(emailVal: string, passVal: string) {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email: emailVal, password: passVal });
@@ -32,12 +40,7 @@ export default function UserLogin() {
       setError(error.message);
       setLoading(false);
     } else {
-      const openProfile = searchParams.get('open_profile');
-      if (openProfile === 'true') {
-        navigate('/?open_profile=true');
-      } else {
-        navigate('/');
-      }
+      navigate(getPostLoginDestination());
     }
   }
 
@@ -50,12 +53,7 @@ export default function UserLogin() {
       setError(error.message);
       setLoading(false);
     } else {
-      const openProfile = searchParams.get('open_profile');
-      if (openProfile === 'true') {
-        navigate('/?open_profile=true');
-      } else {
-        navigate('/');
-      }
+      navigate(getPostLoginDestination());
     }
   }
 
@@ -154,7 +152,10 @@ export default function UserLogin() {
 
         <p className="text-center text-sm text-slate-600 mt-6">
           Don't have an account?{' '}
-          <Link to="/register" className="text-navy-700 font-medium hover:text-navy-900">
+          <Link
+            to={searchParams.get('redirect') ? `/register?redirect=${encodeURIComponent(searchParams.get('redirect')!)}` : '/register'}
+            className="text-navy-700 font-medium hover:text-navy-900"
+          >
             Register here
           </Link>
         </p>

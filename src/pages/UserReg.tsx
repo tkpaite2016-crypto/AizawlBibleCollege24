@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BookOpen, Mail, Lock, User, Eye, EyeOff, AlertCircle, GraduationCap, UserCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function UserReg() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +36,9 @@ export default function UserReg() {
       setError(error.message);
       setLoading(false);
     } else {
-      navigate(`/confirm-email?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`);
+      const redirect = searchParams.get('redirect');
+      const confirmUrl = `/confirm-email?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}${redirect ? `&redirect=${encodeURIComponent(redirect)}` : ''}`;
+      navigate(confirmUrl);
     }
   }
 
@@ -191,7 +194,10 @@ export default function UserReg() {
 
         <p className="text-center text-sm text-slate-600 mt-6">
           Already have an account?{' '}
-          <Link to="/login" className="text-navy-700 font-medium hover:text-navy-900">
+          <Link
+            to={searchParams.get('redirect') ? `/login?redirect=${encodeURIComponent(searchParams.get('redirect')!)}` : '/login'}
+            className="text-navy-700 font-medium hover:text-navy-900"
+          >
             Sign in here
           </Link>
         </p>

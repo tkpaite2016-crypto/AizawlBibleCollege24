@@ -8,20 +8,22 @@ export default function EmailConfirmation() {
   const navigate = useNavigate();
   const email = searchParams.get('email');
   const password = searchParams.get('password');
+  const redirect = searchParams.get('redirect');
   const [resending, setResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
   const [resendError, setResendError] = useState('');
   const [emailConfirmed, setEmailConfirmed] = useState(false);
-  const [checking, setChecking] = useState(true);
+  const [, setChecking] = useState(true);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user?.email_confirmed_at) {
         setEmailConfirmed(true);
         setTimeout(() => {
+          const redirectParam = redirect ? `&redirect=${encodeURIComponent(redirect)}` : '&open_profile=true';
           const loginUrl = password
-            ? `/login?email=${encodeURIComponent(email || '')}&password=${encodeURIComponent(password)}&auto_login=true&open_profile=true`
-            : `/login?email=${encodeURIComponent(email || '')}&open_profile=true`;
+            ? `/login?email=${encodeURIComponent(email || '')}&password=${encodeURIComponent(password)}&auto_login=true${redirectParam}`
+            : `/login?email=${encodeURIComponent(email || '')}${redirectParam}`;
           navigate(loginUrl);
         }, 2000);
       }
@@ -31,9 +33,10 @@ export default function EmailConfirmation() {
       if (session?.user?.email_confirmed_at) {
         setEmailConfirmed(true);
         setTimeout(() => {
+          const redirectParam = redirect ? `&redirect=${encodeURIComponent(redirect)}` : '&open_profile=true';
           const loginUrl = password
-            ? `/login?email=${encodeURIComponent(email || '')}&password=${encodeURIComponent(password)}&auto_login=true&open_profile=true`
-            : `/login?email=${encodeURIComponent(email || '')}&open_profile=true`;
+            ? `/login?email=${encodeURIComponent(email || '')}&password=${encodeURIComponent(password)}&auto_login=true${redirectParam}`
+            : `/login?email=${encodeURIComponent(email || '')}${redirectParam}`;
           navigate(loginUrl);
         }, 2000);
       }

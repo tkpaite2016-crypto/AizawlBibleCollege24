@@ -5,6 +5,7 @@ import Footer from './components/Footer';
 import LoadingSpinner from './components/LoadingSpinner';
 import WhatsAppButton from './components/WhatsAppButton';
 import PrincipalGreetingModal from './components/PrincipalGreetingModal';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 
 import Home from './pages/Home';
 import UserLogin from './pages/UserLogin';
@@ -53,7 +54,7 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const { loading } = useAuth();
+  const { loading, user } = useAuth();
 
   if (loading) return <LoadingSpinner />;
 
@@ -120,6 +121,7 @@ export default function App() {
       </main>
       <Footer />
       <WhatsAppButton />
+      {!user && <PWAInstallPrompt />}
       <PrincipalGreetingModal />
     </div>
   );

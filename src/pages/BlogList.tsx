@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Calendar, User, Loader, Newspaper, X, Hash } from 'lucide-react';
+import { Search, Calendar, User, Loader, Newspaper, X, Hash, Eye } from 'lucide-react';
 import { supabase, BlogPost } from '../lib/supabase';
 
 export default function BlogList() {
@@ -113,45 +113,93 @@ function BlogCard({ post }: { post: BlogPost }) {
     ? new Date(post.published_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
     : new Date(post.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
+  // Collect all available images for collage
+  const images: string[] = [];
+  if (post.featured_image_url) images.push(post.featured_image_url);
+  if (post.supporting_image_url) images.push(post.supporting_image_url);
+  if (post.second_image_url) images.push(post.second_image_url);
+
   return (
     <Link
       to={`/post/${post.slug}`}
-      className="group block bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg hover:border-navy-200 transition-all duration-300"
+      className="group block relative overflow-hidden rounded-2xl aspect-[4/3] shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-1"
     >
-      {post.featured_image_url ? (
-        <div className="relative h-48 overflow-hidden">
+      {/* Collage background */}
+      {images.length > 0 ? (
+        images.length === 1 ? (
           <img
-            src={post.featured_image_url}
+            src={images[0]}
             alt={post.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-        </div>
+        ) : images.length === 2 ? (
+          <div className="absolute inset-0 grid grid-cols-2 gap-0.5">
+            {images.slice(0, 2).map((img, idx) => (
+              <img
+                key={idx}
+                src={img}
+                alt={post.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-0.5">
+            <img
+              src={images[0]}
+              alt={post.title}
+              className="col-span-2 row-span-1 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            />
+            {images.slice(1, 3).map((img, idx) => (
+              <img
+                key={idx}
+                src={img}
+                alt={post.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+              />
+            ))}
+          </div>
+        )
       ) : (
-        <div className="h-32 bg-gradient-to-br from-navy-800 to-navy-950 flex items-center justify-center">
-          <Newspaper className="w-10 h-10 text-gold-500/40" />
+        <div className="absolute inset-0 bg-gradient-to-br from-navy-800 to-navy-950 flex items-center justify-center">
+          <Newspaper className="w-12 h-12 text-gold-500/40" />
         </div>
       )}
-      <div className="p-5">
+
+      {/* Gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+
+      {/* Content */}
+      <div className="absolute inset-0 p-5 flex flex-col justify-end">
+        {/* Hashtags */}
         {post.hashtags && post.hashtags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-2">
-            {post.hashtags.slice(0, 2).map((tag) => (
-              <span key={tag} className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-gold-100 text-gold-700 text-[11px] font-semibold rounded-full">
+            {post.hashtags.slice(0, 3).map((tag) => (
+              <span key={tag} className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-gold-500/90 text-navy-950 text-[11px] font-semibold rounded-full">
                 <Hash className="w-2.5 h-2.5" />{tag}
               </span>
             ))}
           </div>
         )}
-        <h3 className="font-serif font-bold text-navy-900 text-lg leading-snug mb-2 group-hover:text-gold-600 transition-colors line-clamp-2">
+
+        {/* Title */}
+        <h3 className="font-serif font-bold text-white text-lg md:text-xl leading-snug mb-2 group-hover:text-gold-300 transition-colors line-clamp-2">
           {post.title}
         </h3>
-        <p className="text-sm text-slate-500 line-clamp-2 mb-3">{previewText}</p>
-        <div className="flex items-center gap-3 text-xs text-slate-400">
+
+        {/* Preview text */}
+        <p className="text-white/80 text-sm line-clamp-2 mb-3">{previewText}</p>
+
+        {/* Author, Date & Views */}
+        <div className="flex items-center gap-3 text-xs text-white/60">
           <span className="inline-flex items-center gap-1">
-            <User className="w-3.5 h-3.5 text-gold-500" />{post.author_name}
+            <User className="w-3.5 h-3.5 text-gold-400" />{post.author_name}
           </span>
           <span className="inline-flex items-center gap-1">
-            <Calendar className="w-3.5 h-3.5 text-gold-500" />{dateStr}
+            <Calendar className="w-3.5 h-3.5 text-gold-400" />{dateStr}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Eye className="w-3.5 h-3.5 text-gold-400" />{(post.view_count ?? 0).toLocaleString('en-IN')}
           </span>
         </div>
       </div>

@@ -53,7 +53,7 @@ export default function AdminDashboard() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
   const [downloads, setDownloads] = useState<DownloadType[]>([]);
-  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [, setPhotos] = useState<Photo[]>([]);
   const [siteSettings, setSiteSettings] = useState<SiteSetting[]>([]);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [boardMembers, setBoardMembers] = useState<any[]>([]);
@@ -500,7 +500,6 @@ export default function AdminDashboard() {
       if (!user) throw new Error('User not found');
 
       // Generate certificate
-      const certFileName = `certificates/${graduationForm.userId}_${Date.now()}.pdf`;
       // Mark as graduated
       const { error } = await supabase.from('profiles').update({
         graduated: true,

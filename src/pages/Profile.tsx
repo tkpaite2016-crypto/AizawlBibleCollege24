@@ -4,7 +4,7 @@ import {
   User, Mail, Phone, MapPin, CreditCard as Edit2, Save, X, BookOpen,
   Calendar, Loader, RefreshCw, Upload, Award, FileCheck, GraduationCap,
   CreditCard, IndianRupee, Plus, CheckCircle, AlertCircle, Sparkles, Palette,
-  Ban, Bell, BellRing, BellOff, CheckCheck, Clock, Eye, EyeOff, Smartphone,
+  Ban, Bell, BellOff, CheckCheck, Clock,
   Newspaper, Pencil, Trash2, FileText,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -78,7 +78,7 @@ export default function Profile() {
   const [razorpayKeyId, setRazorpayKeyId] = useState('');
 
   // Notifications from context
-  const { notifications, unreadCount, notifLoading: notifLoadingCtx, markAsRead, markAllAsRead, pushSupported, pushEnabled, pushError: contextPushError, enablePush, disablePush } = useNotifications();
+  const { notifications, unreadCount, loading: notifLoadingCtx, markAsRead, markAllAsRead, pushSupported, pushEnabled, pushError: contextPushError, enablePush, disablePush } = useNotifications();
   const [pushToggling, setPushToggling] = useState(false);
   const [localPushError, setLocalPushError] = useState<string | null>(null);
   const [pushAttempted, setPushAttempted] = useState(false);
@@ -282,7 +282,7 @@ export default function Profile() {
           setLocalPushError(result.error || 'Failed to enable push notifications.');
         }
       }
-    } catch (err) {
+    } catch {
       setLocalPushError('An unexpected error occurred. Please try again.');
     }
     setPushToggling(false);
@@ -378,7 +378,7 @@ export default function Profile() {
             setPaymentForm({ amount: '', payment_type: 'fee', payment_method: 'online', notes: '' });
             loadTransactions();
           }, 2000);
-        } catch (err) {
+        } catch {
           setPaymentError('Payment recorded but failed to save. Please contact admin.');
         } finally {
           setPaymentSubmitting(false);

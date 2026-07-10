@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { BookOpen, Share2, Check, Download, Loader, Copy, CheckCircle } from 'lucide-react';
+import { BookOpen, Share2, Download, Loader, Copy, CheckCircle } from 'lucide-react';
 
 // Collection of Bible verses (NIV)
 const bibleVerses = [
@@ -59,7 +59,7 @@ export default function DailyVerse() {
   const [copied, setCopied] = useState(false);
   const [generating, setGenerating] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [, setImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const todayVerse = getVerseOfTheDay();
@@ -284,7 +284,7 @@ export default function DailyVerse() {
             setGenerating(false);
             return;
           }
-        } catch (err) {
+        } catch {
           // Fallback to download
         }
       }

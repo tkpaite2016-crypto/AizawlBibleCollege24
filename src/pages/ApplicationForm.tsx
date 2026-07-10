@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle, AlertCircle, Camera, Upload, FileText, Download, ExternalLink, X } from 'lucide-react';
+import { CheckCircle, AlertCircle, Camera, Upload, FileText, ExternalLink, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -88,7 +88,7 @@ export default function ApplicationForm() {
   const [success, setSuccess] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
   const signatureRef = useRef<HTMLInputElement>(null);
-  const [formDownloadUrl, setFormDownloadUrl] = useState<string | null>(null);
+  const [, setFormDownloadUrl] = useState<string | null>(null);
 
   useEffect(() => {
     supabase

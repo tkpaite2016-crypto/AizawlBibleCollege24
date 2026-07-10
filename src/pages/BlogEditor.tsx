@@ -346,7 +346,7 @@ export default function BlogEditor() {
           />
 
           {/* Intro Text */}
-          <Section label="Introduction" hint="About 2 paragraphs introducing the subject. Use the toolbar to format text (bold, italic, underline, etc.)" textarea>
+          <Section label="Introduction" hint="About 2 paragraphs introducing the subject. Use the toolbar to format text (bold, italic, underline, etc.)">
             <RichTextEditor
               value={draft.intro_text}
               onChange={(html) => setDraft((d) => ({ ...d, intro_text: html }))}
@@ -367,7 +367,7 @@ export default function BlogEditor() {
           />
 
           {/* Body Text */}
-          <Section label="Main Body" hint="About 3 paragraphs expanding on the main theme. Use the toolbar to format text." textarea>
+          <Section label="Main Body" hint="About 3 paragraphs expanding on the main theme. Use the toolbar to format text.">
             <RichTextEditor
               value={draft.body_text}
               onChange={(html) => setDraft((d) => ({ ...d, body_text: html }))}
@@ -388,7 +388,7 @@ export default function BlogEditor() {
           />
 
           {/* Conclusion */}
-          <Section label="Conclusion" hint="About 2 paragraphs providing conclusion, reflection, or implications. Use the toolbar to format text." textarea>
+          <Section label="Conclusion" hint="About 2 paragraphs providing conclusion, reflection, or implications. Use the toolbar to format text.">
             <RichTextEditor
               value={draft.conclusion_text}
               onChange={(html) => setDraft((d) => ({ ...d, conclusion_text: html }))}
@@ -482,9 +482,9 @@ export default function BlogEditor() {
 }
 
 function Section({
-  icon: Icon, label, hint, children, textarea,
+  icon: Icon, label, hint, children,
 }: {
-  icon?: React.ElementType; label: string; hint?: string; children: React.ReactNode; textarea?: boolean;
+  icon?: React.ElementType; label: string; hint?: string; children: React.ReactNode;
 }) {
   return (
     <div className="card p-5">

@@ -1,7 +1,23 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, MapPin, Mail, Facebook, Youtube, Instagram, MessageCircle } from 'lucide-react';
+import { BookOpen, MapPin, Mail, Facebook, Youtube, Instagram, MessageCircle, Eye } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+
+let siteViewIncremented = false;
 
 export default function Footer() {
+  const [siteViews, setSiteViews] = useState<number | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      if (siteViewIncremented) return;
+      siteViewIncremented = true;
+      const { data } = await supabase.rpc('increment_site_view');
+      if (active && data != null) setSiteViews(data as number);
+    })();
+    return () => { active = false; };
+  }, []);
   return (
     <footer className="bg-navy-950 text-white">
       <div className="page-container py-12 md:py-16">
@@ -139,6 +155,12 @@ export default function Footer() {
           <p className="text-slate-600 text-xs">
             Assemblies of God Mizoram District
           </p>
+          {siteViews != null && (
+            <p className="text-slate-600 text-xs inline-flex items-center gap-1">
+              <Eye className="w-3.5 h-3.5" />
+              {siteViews.toLocaleString('en-IN')} total views
+            </p>
+          )}
         </div>
       </div>
     </footer>

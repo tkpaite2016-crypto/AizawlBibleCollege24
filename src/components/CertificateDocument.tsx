@@ -81,17 +81,17 @@ const S = StyleSheet.create({
   cornerOrnamentTopRight: {
     top: 12,
     right: 12,
-    transform: [{ rotate: '90deg' }],
+    transform: 'rotate(90deg)',
   },
   cornerOrnamentBottomLeft: {
     bottom: 12,
     left: 12,
-    transform: [{ rotate: '-90deg' }],
+    transform: 'rotate(-90deg)',
   },
   cornerOrnamentBottomRight: {
     bottom: 12,
     right: 12,
-    transform: [{ rotate: '180deg' }],
+    transform: 'rotate(180deg)',
   },
 
   // Main content container

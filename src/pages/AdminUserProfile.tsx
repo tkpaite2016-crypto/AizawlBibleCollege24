@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowLeft, User, Mail, Phone, MapPin, BookOpen, Calendar,
+  ArrowLeft, Mail, Phone, MapPin, BookOpen, Calendar,
   Loader, Award, GraduationCap, FileCheck, CreditCard as IdCard,
-  Clock, DollarSign, Sparkles, Palette,
+  DollarSign, Sparkles, Palette,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Profile, Transaction } from '../lib/supabase';

@@ -8,6 +8,7 @@ type NotificationContextType = {
   unreadCount: number;
   adminUnreadMessages: number;
   loading: boolean;
+  notifLoading: boolean;
   pushSupported: boolean;
   pushEnabled: boolean;
   pushError: string | null;
@@ -21,7 +22,7 @@ type NotificationContextType = {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const { profile, user } = useAuth();
+  const { profile } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [adminUnreadMessages, setAdminUnreadMessages] = useState(0);
@@ -137,7 +138,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   // Listen for foreground push messages
   useEffect(() => {
-    listenForForegroundPush((payload) => {
+    listenForForegroundPush(() => {
       loadNotifications();
     });
   }, [loadNotifications]);
@@ -191,6 +192,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         unreadCount,
         adminUnreadMessages,
         loading,
+        notifLoading: loading,
         pushSupported,
         pushEnabled,
         pushError,

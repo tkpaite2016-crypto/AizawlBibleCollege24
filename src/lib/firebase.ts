@@ -1,6 +1,6 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage, isSupported, type Messaging } from 'firebase/messaging';
-import { getAnalytics, type Analytics } from 'firebase/analytics';
+import { getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyD1ni9qqpTyHgW-U_jxAgdqKm6CgXPEo2g',
@@ -14,7 +14,7 @@ const firebaseConfig = {
 
 let app: FirebaseApp | null = null;
 let messaging: Messaging | null = null;
-let analytics: Analytics | null = null;
+
 
 async function ensureMessaging(): Promise<Messaging | null> {
   if (messaging) return messaging;
@@ -28,7 +28,7 @@ async function ensureMessaging(): Promise<Messaging | null> {
   messaging = getMessaging(app);
 
   try {
-    analytics = getAnalytics(app);
+    getAnalytics(app);
   } catch {
     // Analytics requires a supported environment; silently skip if unavailable
   }
@@ -49,7 +49,7 @@ export async function getPushToken(vapidKey: string): Promise<{ token: string | 
       if (window.self !== window.top) {
         try {
           // This will throw in cross-origin iframes
-          window.top.location.origin;
+          void window.top!.location.origin;
         } catch {
           return {
             token: null,

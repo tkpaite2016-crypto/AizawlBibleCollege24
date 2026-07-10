@@ -44,7 +44,7 @@ export default function Transaction() {
   // Payment requests
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [allPaymentRequests, setAllPaymentRequests] = useState<PaymentRequest[]>([]);
-  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [, setRequestsLoading] = useState(false);
 
   // Add transaction form (admin only)
   const [showAddForm, setShowAddForm] = useState(false);

@@ -322,3 +322,17 @@
   white-space: nowrap;
   display: inline-block;
 }
+
+/* PWA install prompt animations */
+@keyframes pwaSlideUp {
+  0% { opacity: 0; transform: translateY(30px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes pwaSlideOut {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(20px) scale(0.95); }
+}
+@keyframes pwaShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
