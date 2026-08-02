@@ -8,7 +8,7 @@ import {
   CreditCard, Settings, Save, Ban, Shield, Palette, Search,
   ExternalLink, Eye, EyeOff,
 } from 'lucide-react';
-import { supabase, Profile, Notice, Teacher, SiteSetting, ContactMessage, Download as DownloadType, Photo } from '../lib/supabase';
+import { supabase, Profile, Notice, Teacher, SiteSetting, ContactMessage, Download as DownloadType, Photo, type Application } from '../lib/supabase';
 import { THEMES } from '../lib/themes';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -45,13 +45,22 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: n
   );
 }
 
+function InfoField({ label, value, fullWidth }: { label: string; value: string | null; fullWidth?: boolean }) {
+  return (
+    <div className={fullWidth ? 'sm:col-span-2' : ''}>
+      <p className="text-xs text-slate-400">{label}</p>
+      <p className="font-medium text-navy-900">{value || '—'}</p>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const { profile: adminProfile } = useAuth();
   const [tab, setTab] = useState<Tab>('overview');
   const [users, setUsers] = useState<Profile[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [applications, setApplications] = useState<any[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [downloads, setDownloads] = useState<DownloadType[]>([]);
   const [, setPhotos] = useState<Photo[]>([]);
   const [siteSettings, setSiteSettings] = useState<SiteSetting[]>([]);
@@ -156,6 +165,9 @@ export default function AdminDashboard() {
   const [graduationForm, setGraduationForm] = useState<GraduationForm | null>(null);
   const [processingGraduation, setProcessingGraduation] = useState(false);
   const [graduationError, setGraduationError] = useState('');
+
+  // Application preview
+  const [viewingApplication, setViewingApplication] = useState<Application | null>(null);
 
   // Confirm modal
   const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(null);
@@ -1519,6 +1531,10 @@ export default function AdminDashboard() {
                           <td className="px-4 py-3 text-xs text-slate-500">{new Date(a.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1">
+                              <button onClick={() => setViewingApplication(a as Application)}
+                                className="inline-flex items-center justify-center w-8 h-8 bg-navy-100 text-navy-700 rounded-lg hover:bg-navy-200 transition-colors" title="View Application">
+                                <Eye className="w-4 h-4" />
+                              </button>
                               {a.status === 'pending' && (
                                 <>
                                   <button onClick={() => updateApplicationStatus(a.id, 'accepted')} className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors">Accept</button>
@@ -1536,6 +1552,188 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Application Preview Modal */}
+          {viewingApplication && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setViewingApplication(null)}>
+              <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                {/* Header */}
+                <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
+                  <div className="flex items-center gap-3">
+                    {viewingApplication.passport_photo_url ? (
+                      <img src={viewingApplication.passport_photo_url} alt={viewingApplication.full_name} className="w-10 h-10 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-navy-100 flex items-center justify-center">
+                        <span className="text-sm font-bold text-navy-700">{viewingApplication.full_name[0]?.toUpperCase()}</span>
+                      </div>
+                    )}
+                    <div>
+                      <h2 className="text-lg font-serif font-bold text-navy-900">{viewingApplication.full_name}</h2>
+                      <p className="text-xs text-slate-500">Application submitted {new Date(viewingApplication.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-semibold capitalize ${viewingApplication.status === 'pending' ? 'bg-amber-100 text-amber-700' : viewingApplication.status === 'accepted' ? 'bg-green-100 text-green-700' : viewingApplication.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                      {viewingApplication.status}
+                    </span>
+                    <button onClick={() => setViewingApplication(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="px-6 py-5 space-y-6">
+                  {/* Personal Information */}
+                  <section>
+                    <h3 className="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><UserCheck className="w-4 h-4 text-gold-500" /> Personal Information</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                      <InfoField label="Full Name" value={viewingApplication.full_name} />
+                      <InfoField label="Email" value={viewingApplication.email} />
+                      <InfoField label="Phone" value={viewingApplication.phone} />
+                      <InfoField label="Date of Birth" value={viewingApplication.dob ? new Date(viewingApplication.dob).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null} />
+                      <InfoField label="Gender" value={viewingApplication.gender ? viewingApplication.gender.charAt(0).toUpperCase() + viewingApplication.gender.slice(1) : null} />
+                      <InfoField label="Marital Status" value={viewingApplication.marital_status ? viewingApplication.marital_status.charAt(0).toUpperCase() + viewingApplication.marital_status.slice(1) : null} />
+                      <InfoField label="Address" value={viewingApplication.address} fullWidth />
+                      <InfoField label="PIN Code" value={viewingApplication.pin_code} />
+                    </div>
+                  </section>
+
+                  {/* Guardian / Family */}
+                  {(viewingApplication.guardian_name || viewingApplication.parent_occupation || viewingApplication.annual_income) && (
+                    <section>
+                      <h3 className="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><Users className="w-4 h-4 text-gold-500" /> Guardian / Family</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                        <InfoField label="Guardian Name" value={viewingApplication.guardian_name} />
+                        <InfoField label="Parent Occupation" value={viewingApplication.parent_occupation} />
+                        <InfoField label="Annual Income" value={viewingApplication.annual_income} />
+                        <InfoField label="Fee Sponsor" value={viewingApplication.fee_sponsor ? viewingApplication.fee_sponsor.charAt(0).toUpperCase() + viewingApplication.fee_sponsor.slice(1) : null} />
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Academic Information */}
+                  <section>
+                    <h3 className="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><BookOpen className="w-4 h-4 text-gold-500" /> Academic Information</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                      <InfoField label="Course Applied" value={viewingApplication.course_applied || viewingApplication.applying_for} />
+                      <InfoField label="Previous Education" value={viewingApplication.previous_education} />
+                      <InfoField label="Mother Tongue" value={viewingApplication.mother_tongue} />
+                      <InfoField label="Other Languages" value={viewingApplication.other_languages} />
+                    </div>
+
+                    {viewingApplication.academic_qualifications && viewingApplication.academic_qualifications.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Academic History</p>
+                        <div className="space-y-2">
+                          {viewingApplication.academic_qualifications.map((aq, i) => (
+                            <div key={i} className="flex flex-wrap items-center gap-x-4 gap-y-1 p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm">
+                              <span className="font-medium text-navy-900">{aq.class_name || '—'}</span>
+                              <span className="text-slate-500">{aq.school_college || '—'}</span>
+                              <span className="text-slate-500">{aq.pass_fail || '—'}</span>
+                              <span className="text-slate-400 text-xs">{aq.year || '—'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </section>
+
+                  {/* Church / Spiritual Background */}
+                  {(viewingApplication.church_name || viewingApplication.pastor_name || viewingApplication.denomination || viewingApplication.born_again || viewingApplication.water_baptism_date || viewingApplication.church_involvement) && (
+                    <section>
+                      <h3 className="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-gold-500" /> Church & Spiritual Background</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                        <InfoField label="Church Name" value={viewingApplication.church_name} />
+                        <InfoField label="Pastor Name" value={viewingApplication.pastor_name} />
+                        <InfoField label="Denomination" value={viewingApplication.denomination} />
+                        <InfoField label="Born Again" value={viewingApplication.born_again} />
+                        <InfoField label="Water Baptism Date" value={viewingApplication.water_baptism_date} />
+                        <InfoField label="Church Involvement" value={viewingApplication.church_involvement} />
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Statement of Purpose */}
+                  {(viewingApplication.statement_of_purpose || viewingApplication.calling_aim || viewingApplication.statement) && (
+                    <section>
+                      <h3 className="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><FileText className="w-4 h-4 text-gold-500" /> Statement & Calling</h3>
+                      <div className="space-y-3 text-sm">
+                        {viewingApplication.statement_of_purpose && (
+                          <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Statement of Purpose</p>
+                            <p className="text-slate-700 whitespace-pre-wrap">{viewingApplication.statement_of_purpose}</p>
+                          </div>
+                        )}
+                        {viewingApplication.calling_aim && (
+                          <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Calling & Aim</p>
+                            <p className="text-slate-700 whitespace-pre-wrap">{viewingApplication.calling_aim}</p>
+                          </div>
+                        )}
+                        {viewingApplication.statement && (
+                          <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Statement</p>
+                            <p className="text-slate-700 whitespace-pre-wrap">{viewingApplication.statement}</p>
+                          </div>
+                        )}
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Additional Details */}
+                  {(viewingApplication.practices_vices !== null || viewingApplication.can_pay_fees !== null) && (
+                    <section>
+                      <h3 className="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><AlertCircle className="w-4 h-4 text-gold-500" /> Additional Details</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                        <InfoField label="Practices Vices" value={viewingApplication.practices_vices === null ? null : viewingApplication.practices_vices ? 'Yes' : 'No'} />
+                        <InfoField label="Can Pay Fees" value={viewingApplication.can_pay_fees === null ? null : viewingApplication.can_pay_fees ? 'Yes' : 'No'} />
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Signature */}
+                  {viewingApplication.signature_data_url && (
+                    <section>
+                      <h3 className="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><Pencil className="w-4 h-4 text-gold-500" /> Signature</h3>
+                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 inline-block">
+                        <img src={viewingApplication.signature_data_url} alt="Signature" className="h-20 object-contain" />
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Review Notes */}
+                  {viewingApplication.review_notes && (
+                    <section>
+                      <h3 className="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2"><AlertTriangle className="w-4 h-4 text-gold-500" /> Review Notes</h3>
+                      <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                        <p className="text-sm text-amber-800 whitespace-pre-wrap">{viewingApplication.review_notes}</p>
+                        {viewingApplication.reviewed_at && (
+                          <p className="text-xs text-amber-600 mt-2">Reviewed on {new Date(viewingApplication.reviewed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                        )}
+                      </div>
+                    </section>
+                  )}
+                </div>
+
+                {/* Footer Actions */}
+                <div className="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-4 flex items-center justify-between gap-3">
+                  <a href={`mailto:${viewingApplication.email}?subject=Application Update - ${viewingApplication.full_name}`} className="btn-secondary text-sm inline-flex items-center gap-2">
+                    <Mail className="w-4 h-4" /> Email Applicant
+                  </a>
+                  <div className="flex items-center gap-2">
+                    {viewingApplication.status === 'pending' ? (
+                      <>
+                        <button onClick={() => { updateApplicationStatus(viewingApplication.id, 'accepted'); setViewingApplication(null); }} className="text-xs px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors font-medium inline-flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Accept</button>
+                        <button onClick={() => { updateApplicationStatus(viewingApplication.id, 'rejected'); setViewingApplication(null); }} className="text-xs px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors font-medium inline-flex items-center gap-1"><X className="w-3.5 h-3.5" /> Reject</button>
+                      </>
+                    ) : (
+                      <button onClick={() => { updateApplicationStatus(viewingApplication.id, 'pending'); setViewingApplication((prev) => prev ? { ...prev, status: 'pending' } : null); }} className="text-xs px-3 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium">Reset Status</button>
+                    )}
+                    <button onClick={() => setViewingApplication(null)} className="btn-primary text-sm">Close</button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
