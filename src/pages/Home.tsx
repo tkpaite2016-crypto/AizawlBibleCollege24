@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   BookOpen, Bell, Users, Download, Image, ChevronRight,
   Award, MapPin, Calendar, Star, ArrowRight, Megaphone, ChevronLeft,
-  Newspaper, ArrowUpRight, User, Hash, Eye,
+  Newspaper, User, Eye,
 } from 'lucide-react';
 import { supabase, Notice, Photo, BlogPost } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
