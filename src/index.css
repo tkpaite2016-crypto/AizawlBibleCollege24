@@ -121,6 +121,10 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out both;
+}
+
 /* ===== PROFILE THEMES ===== */
 
 /* Shared shimmer sweep */

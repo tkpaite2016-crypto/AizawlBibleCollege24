@@ -1,9 +1,11 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import LoadingSpinner from './components/LoadingSpinner';
 import WhatsAppButton from './components/WhatsAppButton';
+import GlobalChat from './components/GlobalChat';
 import PrincipalGreetingModal from './components/PrincipalGreetingModal';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -62,6 +64,7 @@ installGlobalErrorHandler();
 
 export default function App() {
   const { loading, user } = useAuth();
+  const [chatOpen, setChatOpen] = useState(false);
 
   if (loading) return <LoadingSpinner />;
 
@@ -132,7 +135,8 @@ export default function App() {
             </Routes>
           </main>
           <Footer />
-          <WhatsAppButton />
+          <WhatsAppButton onChatOpen={() => setChatOpen(true)} />
+          <GlobalChat open={chatOpen} onClose={() => setChatOpen(false)} />
           {!user && <PWAInstallPrompt />}
           <PrincipalGreetingModal />
         </div>
