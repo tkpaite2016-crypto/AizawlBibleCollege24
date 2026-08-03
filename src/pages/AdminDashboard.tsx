@@ -11,6 +11,7 @@ import {
 import { supabase, Profile, Notice, Teacher, SiteSetting, ContactMessage, Download as DownloadType, Photo, type Application } from '../lib/supabase';
 import { THEMES } from '../lib/themes';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/Toast';
 
 type Tab = 'overview' | 'users' | 'students' | 'graduated' | 'faculty' | 'admins' | 'notices' | 'applications' | 'downloads' | 'certificates' | 'settings' | 'payment' | 'messages';
 
@@ -56,6 +57,7 @@ function InfoField({ label, value, fullWidth }: { label: string; value: string |
 
 export default function AdminDashboard() {
   const { profile: adminProfile } = useAuth();
+  const toast = useToast();
   const [tab, setTab] = useState<Tab>('overview');
   const [users, setUsers] = useState<Profile[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
@@ -566,11 +568,21 @@ export default function AdminDashboard() {
       author_id: adminProfile?.id || null, is_published: true,
     };
     if (editingNotice) {
-      const { data } = await supabase.from('notices').update(payload).eq('id', editingNotice.id).select().single();
-      if (data) setNotices((prev) => prev.map((n) => n.id === editingNotice.id ? data : n));
+      const { data, error } = await supabase.from('notices').update(payload).eq('id', editingNotice.id).select().single();
+      if (error) {
+        toast.error('Failed to update notice', error.message);
+      } else {
+        if (data) setNotices((prev) => prev.map((n) => n.id === editingNotice.id ? data : n));
+        toast.success('Notice updated', `"${noticeForm.title}" has been updated successfully.`);
+      }
     } else {
-      const { data } = await supabase.from('notices').insert(payload).select().single();
-      if (data) setNotices((prev) => [data, ...prev]);
+      const { data, error } = await supabase.from('notices').insert(payload).select().single();
+      if (error) {
+        toast.error('Failed to create notice', error.message);
+      } else {
+        if (data) setNotices((prev) => [data, ...prev]);
+        toast.success('Notice created', `"${noticeForm.title}" has been published.`);
+      }
     }
     setNoticeForm({ title: '', content: '', category: 'general', priority: 'medium', expires_at: '', image_url: '' });
     setEditingNotice(null);
@@ -579,14 +591,25 @@ export default function AdminDashboard() {
   }
 
   async function deleteNotice(id: string) {
-    await supabase.from('notices').delete().eq('id', id);
+    const notice = notices.find((n) => n.id === id);
+    const { error } = await supabase.from('notices').delete().eq('id', id);
+    if (error) {
+      toast.error('Failed to delete notice', error.message);
+      return;
+    }
     setNotices((prev) => prev.filter((n) => n.id !== id));
     setConfirmConfig(null);
+    toast.success('Notice deleted', notice ? `"${notice.title}" has been deleted.` : 'The notice has been deleted.');
   }
 
   async function toggleNoticePublished(notice: Notice) {
-    const { data } = await supabase.from('notices').update({ is_published: !notice.is_published }).eq('id', notice.id).select().single();
+    const { data, error } = await supabase.from('notices').update({ is_published: !notice.is_published }).eq('id', notice.id).select().single();
+    if (error) {
+      toast.error('Failed to toggle visibility', error.message);
+      return;
+    }
     if (data) setNotices((prev) => prev.map((n) => n.id === notice.id ? data : n));
+    toast.success(notice.is_published ? 'Notice hidden' : 'Notice published', `"${notice.title}" is now ${notice.is_published ? 'hidden from public view' : 'visible to everyone'}.`);
   }
 
   // ── Teachers ─────────────────────────────────────────────────
