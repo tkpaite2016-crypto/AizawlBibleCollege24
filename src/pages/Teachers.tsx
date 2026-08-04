@@ -204,17 +204,16 @@ export default function Teachers() {
               </div>
             ) : (
               <div className="space-y-8">
-                {filtered.map((member, index) => {
-                  const isEven = index % 2 === 0;
+                {filtered.map((member) => {
                   return (
                     <div key={member.id} className="card hover:shadow-lg transition-all duration-300 overflow-visible">
-                      <div className={`flex flex-col md:flex-row ${isEven ? 'md:flex-row' : 'md:flex-row-reverse'} items-stretch`}>
+                      <div className="flex flex-col md:flex-row items-stretch">
                         {/* Decorative accent */}
-                        <div className={`absolute top-0 ${isEven ? 'left-0' : 'right-0'} w-1.5 h-full bg-gold-400 rounded-l-xl hidden md:block`} />
+                        <div className="absolute top-0 left-0 w-1.5 h-full bg-gold-400 rounded-l-xl hidden md:block" />
 
                         {/* Text side */}
                         <div className="flex-1 p-6 md:p-8 flex flex-col justify-center relative">
-                          <div className={`absolute top-4 ${isEven ? 'left-4' : 'right-4'} w-10 h-10 border-2 border-navy-200 rounded-lg opacity-30`} />
+                          <div className="absolute top-4 left-4 w-10 h-10 border-2 border-navy-200 rounded-lg opacity-30" />
 
                           <div className="mb-1">
                             <p className="text-xs font-semibold text-gold-600 uppercase tracking-widest mb-1">
@@ -292,8 +291,8 @@ export default function Teachers() {
                               <p className="text-slate-400 text-xs mt-2">Photo not available</p>
                             </div>
                           )}
-                          <div className={`absolute top-3 ${isEven ? 'right-3' : 'left-3'} w-5 h-5 border-t-2 border-r-2 border-gold-400 opacity-60`} />
-                          <div className={`absolute bottom-3 ${isEven ? 'left-3' : 'right-3'} w-5 h-5 border-b-2 border-l-2 border-navy-400 opacity-60`} />
+                          <div className="absolute top-3 right-3 w-5 h-5 border-t-2 border-r-2 border-gold-400 opacity-60" />
+                          <div className="absolute bottom-3 left-3 w-5 h-5 border-b-2 border-l-2 border-navy-400 opacity-60" />
                         </div>
                       </div>
                     </div>
