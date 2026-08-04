@@ -206,95 +206,88 @@ export default function Teachers() {
               <div className="space-y-8">
                 {filtered.map((member, index) => {
                   const imageLeft = index % 2 === 0;
-                  return (
-                    <div key={member.id} className="card hover:shadow-lg transition-all duration-300 overflow-visible">
-                      <div className={`flex flex-col md:flex-row ${imageLeft ? 'md:flex-row-reverse' : 'md:flex-row'} items-stretch`}>
-                        {/* Decorative accent */}
-                        <div className={`absolute top-0 ${imageLeft ? 'right-0' : 'left-0'} w-1.5 h-full bg-gold-400 ${imageLeft ? 'rounded-r-xl' : 'rounded-l-xl'} hidden md:block`} />
-
-                        {/* Text side */}
-                        <div className="flex-1 p-6 md:p-8 flex flex-col justify-center relative">
-                          <div className={`absolute top-4 ${imageLeft ? 'right-4' : 'left-4'} w-10 h-10 border-2 border-navy-200 rounded-lg opacity-30`} />
-
-                          <div className="mb-1">
-                            <p className="text-xs font-semibold text-gold-600 uppercase tracking-widest mb-1">
-                              {filter === 'current' ? 'Current Faculty' : 'Former Faculty'}
-                            </p>
-                            <h2 className="text-2xl md:text-3xl font-serif font-bold text-navy-900">{member.full_name}</h2>
-                            {member.position && (
-                              <span className="inline-flex items-center mt-2 px-3 py-1 bg-navy-100 text-navy-700 text-xs font-semibold rounded-full">
-                                {member.position}
-                              </span>
-                            )}
+                  const photoBlock = (
+                    <div className="w-full md:w-56 lg:w-72 flex-shrink-0 bg-slate-100 relative overflow-hidden min-h-[200px] md:min-h-0 rounded-t-xl md:rounded-none">
+                      {member.photo_url ? (
+                        <img
+                          src={member.photo_url}
+                          alt={member.full_name}
+                          className="w-full h-full object-cover"
+                          style={{ minHeight: '220px' }}
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-full min-h-[220px] bg-gradient-to-br from-slate-100 to-slate-200">
+                          <div className="w-16 h-16 bg-slate-300 rounded-lg flex items-center justify-center">
+                            <User className="w-8 h-8 text-slate-500" />
                           </div>
-
-                          {member.qualification && (
-                            <div className="flex items-start gap-2 mt-3 text-slate-600 text-sm">
-                              <Award className="w-4 h-4 text-gold-500 flex-shrink-0 mt-0.5" />
-                              <span>{member.qualification}</span>
-                            </div>
+                          <p className="text-slate-400 text-xs mt-2">Photo not available</p>
+                        </div>
+                      )}
+                      <div className={`absolute top-3 ${imageLeft ? 'left-3' : 'right-3'} w-5 h-5 border-t-2 border-r-2 border-gold-400 opacity-60`} />
+                      <div className={`absolute bottom-3 ${imageLeft ? 'right-3' : 'left-3'} w-5 h-5 border-b-2 border-l-2 border-navy-400 opacity-60`} />
+                    </div>
+                  );
+                  const textBlock = (
+                    <div className="flex-1 p-6 md:p-8 flex flex-col justify-center relative">
+                      <div className={`absolute top-4 ${imageLeft ? 'right-4' : 'left-4'} w-10 h-10 border-2 border-navy-200 rounded-lg opacity-30`} />
+                      <div className="mb-1">
+                        <p className="text-xs font-semibold text-gold-600 uppercase tracking-widest mb-1">
+                          {filter === 'current' ? 'Current Faculty' : 'Former Faculty'}
+                        </p>
+                        <h2 className="text-2xl md:text-3xl font-serif font-bold text-navy-900">{member.full_name}</h2>
+                        {member.position && (
+                          <span className="inline-flex items-center mt-2 px-3 py-1 bg-navy-100 text-navy-700 text-xs font-semibold rounded-full">
+                            {member.position}
+                          </span>
+                        )}
+                      </div>
+                      {member.qualification && (
+                        <div className="flex items-start gap-2 mt-3 text-slate-600 text-sm">
+                          <Award className="w-4 h-4 text-gold-500 flex-shrink-0 mt-0.5" />
+                          <span>{member.qualification}</span>
+                        </div>
+                      )}
+                      {member.subject_in_charge && (
+                        <div className="flex items-start gap-2 mt-2 text-slate-600 text-sm">
+                          <Briefcase className="w-4 h-4 text-gold-500 flex-shrink-0 mt-0.5" />
+                          <span>{member.subject_in_charge}</span>
+                        </div>
+                      )}
+                      {member.address && (
+                        <div className="flex items-start gap-2 mt-2 text-slate-600 text-sm">
+                          <MapPin className="w-4 h-4 text-gold-500 flex-shrink-0 mt-0.5" />
+                          <span>{member.address}</span>
+                        </div>
+                      )}
+                      {member.source === 'profile' && (member.email || member.phone) && (
+                        <div className="flex flex-wrap gap-4 mt-3">
+                          {member.email && (
+                            <a href={`mailto:${member.email}`} className="flex items-center gap-1.5 text-sm text-navy-600 hover:text-gold-600 transition-colors">
+                              <Mail className="w-3.5 h-3.5" /> {member.email}
+                            </a>
                           )}
-
-                          {member.subject_in_charge && (
-                            <div className="flex items-start gap-2 mt-2 text-slate-600 text-sm">
-                              <Briefcase className="w-4 h-4 text-gold-500 flex-shrink-0 mt-0.5" />
-                              <span>{member.subject_in_charge}</span>
-                            </div>
-                          )}
-
-                          {member.address && (
-                            <div className="flex items-start gap-2 mt-2 text-slate-600 text-sm">
-                              <MapPin className="w-4 h-4 text-gold-500 flex-shrink-0 mt-0.5" />
-                              <span>{member.address}</span>
-                            </div>
-                          )}
-
-                          {member.source === 'profile' && (member.email || member.phone) && (
-                            <div className="flex flex-wrap gap-4 mt-3">
-                              {member.email && (
-                                <a href={`mailto:${member.email}`} className="flex items-center gap-1.5 text-sm text-navy-600 hover:text-gold-600 transition-colors">
-                                  <Mail className="w-3.5 h-3.5" /> {member.email}
-                                </a>
-                              )}
-                              {member.phone && (
-                                <span className="flex items-center gap-1.5 text-sm text-slate-500">
-                                  <Phone className="w-3.5 h-3.5" /> {member.phone}
-                                </span>
-                              )}
-                            </div>
-                          )}
-
-                          {member.bio && (
-                            <p className="text-slate-500 text-sm mt-4 leading-relaxed line-clamp-3">{member.bio}</p>
-                          )}
-
-                          {member.left_at && filter === 'former' && (
-                            <p className="text-xs text-slate-400 mt-3">
-                              Served until {new Date(member.left_at).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
-                            </p>
+                          {member.phone && (
+                            <span className="flex items-center gap-1.5 text-sm text-slate-500">
+                              <Phone className="w-3.5 h-3.5" /> {member.phone}
+                            </span>
                           )}
                         </div>
-
-                        {/* Photo side */}
-                        <div className="w-full md:w-56 lg:w-72 flex-shrink-0 bg-slate-100 relative overflow-hidden min-h-[200px] md:min-h-0 rounded-t-xl md:rounded-none">
-                          {member.photo_url ? (
-                            <img
-                              src={member.photo_url}
-                              alt={member.full_name}
-                              className="w-full h-full object-cover"
-                              style={{ minHeight: '220px' }}
-                            />
-                          ) : (
-                            <div className="flex flex-col items-center justify-center h-full min-h-[220px] bg-gradient-to-br from-slate-100 to-slate-200">
-                              <div className="w-16 h-16 bg-slate-300 rounded-lg flex items-center justify-center">
-                                <User className="w-8 h-8 text-slate-500" />
-                              </div>
-                              <p className="text-slate-400 text-xs mt-2">Photo not available</p>
-                            </div>
-                          )}
-                          <div className={`absolute top-3 ${imageLeft ? 'left-3' : 'right-3'} w-5 h-5 border-t-2 border-r-2 border-gold-400 opacity-60`} />
-                          <div className={`absolute bottom-3 ${imageLeft ? 'right-3' : 'left-3'} w-5 h-5 border-b-2 border-l-2 border-navy-400 opacity-60`} />
-                        </div>
+                      )}
+                      {member.bio && (
+                        <p className="text-slate-500 text-sm mt-4 leading-relaxed line-clamp-3">{member.bio}</p>
+                      )}
+                      {member.left_at && filter === 'former' && (
+                        <p className="text-xs text-slate-400 mt-3">
+                          Served until {new Date(member.left_at).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+                        </p>
+                      )}
+                    </div>
+                  );
+                  return (
+                    <div key={member.id} className="card hover:shadow-lg transition-all duration-300 overflow-visible relative">
+                      <div className={`absolute top-0 ${imageLeft ? 'right-0' : 'left-0'} w-1.5 h-full bg-gold-400 ${imageLeft ? 'rounded-r-xl' : 'rounded-l-xl'} hidden md:block`} />
+                      <div className="flex flex-col md:flex-row items-stretch">
+                        {imageLeft ? <>{photoBlock}{textBlock}</> : <>{textBlock}{photoBlock}</>}
                       </div>
                     </div>
                   );
