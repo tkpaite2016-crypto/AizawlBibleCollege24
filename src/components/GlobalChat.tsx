@@ -64,7 +64,6 @@ export default function GlobalChat({ open, onClose }: { open: boolean; onClose: 
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [guestName, setGuestName] = useState('');
-  const [showGuestInput, setShowGuestInput] = useState(false);
   const [onlineCount, setOnlineCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -169,7 +168,7 @@ export default function GlobalChat({ open, onClose }: { open: boolean; onClose: 
     const isGuest = !profile;
     if (isGuest) {
       if (!guestName.trim()) {
-        setShowGuestInput(true);
+        setError('Please enter your name first to start chatting.');
         return;
       }
       localStorage.setItem(GUEST_NAME_KEY, guestName.trim());
@@ -206,6 +205,8 @@ export default function GlobalChat({ open, onClose }: { open: boolean; onClose: 
   }
 
   if (!open) return null;
+
+  const needsGuestName = !profile && !guestName.trim();
 
   return (
     <>
@@ -302,64 +303,63 @@ export default function GlobalChat({ open, onClose }: { open: boolean; onClose: 
           )}
         </div>
 
-        {/* Guest name prompt */}
-        {!profile && showGuestInput && (
-          <div className="px-3 py-2 bg-amber-50 border-t border-amber-200 flex-shrink-0">
-            <div className="flex gap-2">
-              <input
-                value={guestName}
-                onChange={(e) => setGuestName(e.target.value)}
-                className="input-field flex-1 text-sm py-1.5"
-                placeholder="Enter your name to chat"
-                maxLength={30}
-                autoFocus
-              />
-              <button
-                onClick={() => {
-                  if (guestName.trim()) {
-                    localStorage.setItem(GUEST_NAME_KEY, guestName.trim());
-                    setShowGuestInput(false);
-                  }
-                }}
-                className="btn-primary px-3 py-1.5 text-sm"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Error banner */}
+        {/* Error banner (only when messages exist) */}
         {error && messages.length > 0 && (
           <div className="px-3 py-1.5 bg-red-50 text-red-600 text-xs text-center flex-shrink-0">
             {error}
           </div>
         )}
 
-        {/* Input */}
+        {/* Input area */}
         <div className="px-3 py-3 bg-white border-t border-slate-100 flex-shrink-0">
-          <form onSubmit={sendMessage} className="flex gap-2">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              className="input-field flex-1 text-sm py-2"
-              placeholder={profile ? 'Type a message...' : guestName.trim() ? 'Type a message...' : 'Enter your name to chat...'}
-              maxLength={MAX_LENGTH}
-              onFocus={() => {
-                if (!profile && !guestName.trim()) setShowGuestInput(true);
+          {needsGuestName ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (guestName.trim()) {
+                  localStorage.setItem(GUEST_NAME_KEY, guestName.trim());
+                  setError(null);
+                }
               }}
-            />
-            <button
-              type="submit"
-              disabled={sending || !input.trim()}
-              className="btn-primary px-3 py-2 flex-shrink-0 disabled:opacity-50"
+              className="flex gap-2"
             >
-              <Send className="w-4 h-4" />
-            </button>
-          </form>
-          {!profile && (
+              <input
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                className="input-field flex-1 text-sm py-2"
+                placeholder="Enter your name to start chatting..."
+                maxLength={30}
+                autoFocus
+              />
+              <button
+                type="submit"
+                disabled={!guestName.trim()}
+                className="btn-primary px-4 py-2 flex-shrink-0 disabled:opacity-50 text-sm"
+              >
+                Join
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={sendMessage} className="flex gap-2">
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                className="input-field flex-1 text-sm py-2"
+                placeholder={profile ? 'Type a message...' : `Chatting as ${guestName.trim()}...`}
+                maxLength={MAX_LENGTH}
+              />
+              <button
+                type="submit"
+                disabled={sending || !input.trim()}
+                className="btn-primary px-3 py-2 flex-shrink-0 disabled:opacity-50"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </form>
+          )}
+          {!profile && !needsGuestName && (
             <p className="text-[10px] text-slate-400 mt-1.5 text-center">
-              You're chatting as a guest. Sign in to get your profile name and avatar.
+              You're chatting as <span className="font-semibold">{guestName.trim()}</span>. Sign in to get your profile name and avatar.
             </p>
           )}
         </div>

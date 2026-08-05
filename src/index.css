@@ -10,6 +10,24 @@
   }
 }
 
+/* Alternating faculty card layout - applies only on md+ screens */
+@media (min-width: 768px) {
+  .faculty-inner {
+    display: flex;
+    align-items: stretch;
+  }
+  .faculty-list > .faculty-card:nth-child(odd) .faculty-inner {
+    flex-direction: row;
+  }
+  .faculty-list > .faculty-card:nth-child(even) .faculty-inner {
+    flex-direction: row-reverse;
+  }
+  .faculty-photo {
+    min-height: 0;
+    height: auto;
+  }
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
