@@ -1,11 +1,18 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useAuth } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import LoadingSpinner from './components/LoadingSpinner';
 import WhatsAppButton from './components/WhatsAppButton';
+import GlobalChat from './components/GlobalChat';
 import PrincipalGreetingModal from './components/PrincipalGreetingModal';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import RouterErrorBoundary from './components/RouterErrorBoundary';
+import { ToastProvider } from './components/Toast';
+import OfflineBanner from './components/OfflineBanner';
+import { installGlobalErrorHandler } from './lib/errorHandler';
 
 import Home from './pages/Home';
 import UserLogin from './pages/UserLogin';
@@ -53,76 +60,87 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+installGlobalErrorHandler();
+
 export default function App() {
   const { loading, user } = useAuth();
+  const [chatOpen, setChatOpen] = useState(false);
 
   if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar />
-      <main className="flex-1">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<AuthRoute><UserLogin /></AuthRoute>} />
-          <Route path="/register" element={<AuthRoute><UserReg /></AuthRoute>} />
-          <Route path="/confirm-email" element={<EmailConfirmation />} />
-          <Route path="/notices" element={<NoticeBoard />} />
-          <Route path="/downloads" element={<Downloads />} />
-          <Route path="/teachers" element={<Teachers />} />
-          <Route path="/about" element={<AboutUs />} />
-          <Route path="/apply" element={<ApplicationForm />} />
-          <Route path="/gallery" element={<PhotoGallery />} />
-          <Route path="/prologue" element={<Prologue />} />
-          <Route path="/doctrine" element={<Doctrine />} />
-          <Route path="/academics" element={<AcademicInfo />} />
-          <Route path="/contact" element={<ContactUs />} />
-          <Route path="/board" element={<BoardOfManagement />} />
-          <Route path="/blog" element={<BlogList />} />
-          <Route path="/post/:slug" element={<BlogPostPage />} />
-          <Route
-            path="/admin/blog/new"
-            element={<ProtectedRoute requiredRole={['admin', 'faculty']}><BlogEditor /></ProtectedRoute>}
-          />
-          <Route
-            path="/admin/blog/edit/:id"
-            element={<ProtectedRoute requiredRole={['admin', 'faculty']}><BlogEditor /></ProtectedRoute>}
-          />
-          <Route path="/terms" element={<TermsAndConditions />} />
-          <Route path="/privacy" element={<PrivacyPolicy />} />
-          <Route path="/refunds" element={<CancellationAndRefunds />} />
-          <Route path="/shipping" element={<ShippingAndDelivery />} />
-          <Route
-            path="/forum"
-            element={<ProtectedRoute><Forum /></ProtectedRoute>}
-          />
-          <Route
-            path="/profile"
-            element={<ProtectedRoute><Profile /></ProtectedRoute>}
-          />
-          <Route
-            path="/admin"
-            element={<ProtectedRoute requiredRole={['admin']}><AdminDashboard /></ProtectedRoute>}
-          />
-          <Route
-            path="/admin/users/:id"
-            element={<ProtectedRoute requiredRole={['admin']}><AdminUserProfile /></ProtectedRoute>}
-          />
-          <Route
-            path="/certificate/:userId"
-            element={<ProtectedRoute requiredRole={['admin']}><CertificatePreview /></ProtectedRoute>}
-          />
-          <Route
-            path="/transactions"
-            element={<ProtectedRoute requiredRole={['admin', 'faculty', 'student', 'finance']}><Transaction /></ProtectedRoute>}
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
-      <Footer />
-      <WhatsAppButton />
-      {!user && <PWAInstallPrompt />}
-      <PrincipalGreetingModal />
-    </div>
+    <ToastProvider>
+      <ErrorBoundary>
+        <div className="flex flex-col min-h-screen">
+          <OfflineBanner />
+          <Navbar />
+          <main className="flex-1">
+            <Routes>
+              <Route errorElement={<RouterErrorBoundary />}>
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<AuthRoute><UserLogin /></AuthRoute>} />
+                <Route path="/register" element={<AuthRoute><UserReg /></AuthRoute>} />
+                <Route path="/confirm-email" element={<EmailConfirmation />} />
+                <Route path="/notices" element={<NoticeBoard />} />
+                <Route path="/downloads" element={<Downloads />} />
+                <Route path="/teachers" element={<Teachers />} />
+                <Route path="/about" element={<AboutUs />} />
+                <Route path="/apply" element={<ApplicationForm />} />
+                <Route path="/gallery" element={<PhotoGallery />} />
+                <Route path="/prologue" element={<Prologue />} />
+                <Route path="/doctrine" element={<Doctrine />} />
+                <Route path="/academics" element={<AcademicInfo />} />
+                <Route path="/contact" element={<ContactUs />} />
+                <Route path="/board" element={<BoardOfManagement />} />
+                <Route path="/blog" element={<BlogList />} />
+                <Route path="/post/:slug" element={<BlogPostPage />} />
+                <Route
+                  path="/admin/blog/new"
+                  element={<ProtectedRoute requiredRole={['admin', 'faculty']}><BlogEditor /></ProtectedRoute>}
+                />
+                <Route
+                  path="/admin/blog/edit/:id"
+                  element={<ProtectedRoute requiredRole={['admin', 'faculty']}><BlogEditor /></ProtectedRoute>}
+                />
+                <Route path="/terms" element={<TermsAndConditions />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/refunds" element={<CancellationAndRefunds />} />
+                <Route path="/shipping" element={<ShippingAndDelivery />} />
+                <Route
+                  path="/forum"
+                  element={<ProtectedRoute><Forum /></ProtectedRoute>}
+                />
+                <Route
+                  path="/profile"
+                  element={<ProtectedRoute><Profile /></ProtectedRoute>}
+                />
+                <Route
+                  path="/admin"
+                  element={<ProtectedRoute requiredRole={['admin']}><AdminDashboard /></ProtectedRoute>}
+                />
+                <Route
+                  path="/admin/users/:id"
+                  element={<ProtectedRoute requiredRole={['admin']}><AdminUserProfile /></ProtectedRoute>}
+                />
+                <Route
+                  path="/certificate/:userId"
+                  element={<ProtectedRoute requiredRole={['admin']}><CertificatePreview /></ProtectedRoute>}
+                />
+                <Route
+                  path="/transactions"
+                  element={<ProtectedRoute requiredRole={['admin', 'faculty', 'student', 'finance']}><Transaction /></ProtectedRoute>}
+                />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Route>
+            </Routes>
+          </main>
+          <Footer />
+          <WhatsAppButton onChatOpen={() => setChatOpen(true)} />
+          <GlobalChat open={chatOpen} onClose={() => setChatOpen(false)} />
+          {!user && <PWAInstallPrompt />}
+          <PrincipalGreetingModal />
+        </div>
+      </ErrorBoundary>
+    </ToastProvider>
   );
 }

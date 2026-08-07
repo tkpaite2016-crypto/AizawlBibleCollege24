@@ -10,6 +10,39 @@
   }
 }
 
+/* Alternating faculty card layout */
+.faculty-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+@media (min-width: 768px) {
+  /* Odd cards: image LEFT, text RIGHT */
+  .faculty-list > .faculty-card:nth-child(odd) .faculty-inner {
+    flex-direction: row;
+  }
+  /* Even cards: text LEFT, image RIGHT */
+  .faculty-list > .faculty-card:nth-child(even) .faculty-inner {
+    flex-direction: row-reverse;
+  }
+  .faculty-photo {
+    min-height: 0 !important;
+    height: auto;
+  }
+  /* Gold accent bar: right side for odd, left side for even */
+  .faculty-list > .faculty-card:nth-child(odd) .faculty-accent {
+    left: auto;
+    right: 0;
+    border-radius: 0 0.75rem 0.75rem 0;
+  }
+  .faculty-list > .faculty-card:nth-child(even) .faculty-accent {
+    left: 0;
+    right: auto;
+    border-radius: 0.75rem 0 0 0.75rem;
+  }
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -119,6 +152,10 @@
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out both;
 }
 
 /* ===== PROFILE THEMES ===== */
@@ -321,6 +358,23 @@
   animation: marquee-scroll 20s linear infinite;
   white-space: nowrap;
   display: inline-block;
+}
+
+/* Error / toast component animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out both;
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(100%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out both;
 }
 
 /* PWA install prompt animations */

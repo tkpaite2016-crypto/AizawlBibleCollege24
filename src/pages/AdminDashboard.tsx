@@ -6,11 +6,12 @@ import {
   MessageSquare, Upload, Loader, Mail, GraduationCap, Award,
   ShieldCheck, UserCheck, AlertTriangle, Pencil, Download,
   CreditCard, Settings, Save, Ban, Shield, Palette, Search,
-  ExternalLink, Eye, EyeOff,
+  ExternalLink, Eye, EyeOff, Camera,
 } from 'lucide-react';
-import { supabase, Profile, Notice, Teacher, SiteSetting, ContactMessage, Download as DownloadType, Photo } from '../lib/supabase';
+import { supabase, Profile, Notice, Teacher, SiteSetting, ContactMessage, Download as DownloadType, Photo, type Application } from '../lib/supabase';
 import { THEMES } from '../lib/themes';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/Toast';
 
 type Tab = 'overview' | 'users' | 'students' | 'graduated' | 'faculty' | 'admins' | 'notices' | 'applications' | 'downloads' | 'certificates' | 'settings' | 'payment' | 'messages';
 
@@ -45,13 +46,23 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: n
   );
 }
 
+function InfoField({ label, value, fullWidth }: { label: string; value: string | null; fullWidth?: boolean }) {
+  return (
+    <div className={fullWidth ? 'sm:col-span-2' : ''}>
+      <p className="text-xs text-slate-400">{label}</p>
+      <p className="font-medium text-navy-900">{value || '—'}</p>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const { profile: adminProfile } = useAuth();
+  const toast = useToast();
   const [tab, setTab] = useState<Tab>('overview');
   const [users, setUsers] = useState<Profile[]>([]);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
-  const [applications, setApplications] = useState<any[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [downloads, setDownloads] = useState<DownloadType[]>([]);
   const [, setPhotos] = useState<Photo[]>([]);
   const [siteSettings, setSiteSettings] = useState<SiteSetting[]>([]);
@@ -156,6 +167,11 @@ export default function AdminDashboard() {
   const [graduationForm, setGraduationForm] = useState<GraduationForm | null>(null);
   const [processingGraduation, setProcessingGraduation] = useState(false);
   const [graduationError, setGraduationError] = useState('');
+
+  // Application preview
+  const [viewingApplication, setViewingApplication] = useState<Application | null>(null);
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [reviewNotesSaving, setReviewNotesSaving] = useState(false);
 
   // Confirm modal
   const [confirmConfig, setConfirmConfig] = useState<ConfirmConfig | null>(null);
@@ -552,11 +568,21 @@ export default function AdminDashboard() {
       author_id: adminProfile?.id || null, is_published: true,
     };
     if (editingNotice) {
-      const { data } = await supabase.from('notices').update(payload).eq('id', editingNotice.id).select().single();
-      if (data) setNotices((prev) => prev.map((n) => n.id === editingNotice.id ? data : n));
+      const { data, error } = await supabase.from('notices').update(payload).eq('id', editingNotice.id).select().single();
+      if (error) {
+        toast.error('Failed to update notice', error.message);
+      } else {
+        if (data) setNotices((prev) => prev.map((n) => n.id === editingNotice.id ? data : n));
+        toast.success('Notice updated', `"${noticeForm.title}" has been updated successfully.`);
+      }
     } else {
-      const { data } = await supabase.from('notices').insert(payload).select().single();
-      if (data) setNotices((prev) => [data, ...prev]);
+      const { data, error } = await supabase.from('notices').insert(payload).select().single();
+      if (error) {
+        toast.error('Failed to create notice', error.message);
+      } else {
+        if (data) setNotices((prev) => [data, ...prev]);
+        toast.success('Notice created', `"${noticeForm.title}" has been published.`);
+      }
     }
     setNoticeForm({ title: '', content: '', category: 'general', priority: 'medium', expires_at: '', image_url: '' });
     setEditingNotice(null);
@@ -565,14 +591,25 @@ export default function AdminDashboard() {
   }
 
   async function deleteNotice(id: string) {
-    await supabase.from('notices').delete().eq('id', id);
+    const notice = notices.find((n) => n.id === id);
+    const { error } = await supabase.from('notices').delete().eq('id', id);
+    if (error) {
+      toast.error('Failed to delete notice', error.message);
+      return;
+    }
     setNotices((prev) => prev.filter((n) => n.id !== id));
     setConfirmConfig(null);
+    toast.success('Notice deleted', notice ? `"${notice.title}" has been deleted.` : 'The notice has been deleted.');
   }
 
   async function toggleNoticePublished(notice: Notice) {
-    const { data } = await supabase.from('notices').update({ is_published: !notice.is_published }).eq('id', notice.id).select().single();
+    const { data, error } = await supabase.from('notices').update({ is_published: !notice.is_published }).eq('id', notice.id).select().single();
+    if (error) {
+      toast.error('Failed to toggle visibility', error.message);
+      return;
+    }
     if (data) setNotices((prev) => prev.map((n) => n.id === notice.id ? data : n));
+    toast.success(notice.is_published ? 'Notice hidden' : 'Notice published', `"${notice.title}" is now ${notice.is_published ? 'hidden from public view' : 'visible to everyone'}.`);
   }
 
   // ── Teachers ─────────────────────────────────────────────────
@@ -627,6 +664,16 @@ export default function AdminDashboard() {
   async function updateApplicationStatus(id: string, status: string, notes?: string) {
     const { data } = await supabase.from('applications').update({ status, review_notes: notes || null, reviewed_at: new Date().toISOString() }).eq('id', id).select().single();
     if (data) setApplications((prev) => prev.map((a) => a.id === id ? data : a));
+  }
+
+  async function saveReviewNotes(id: string, notes: string) {
+    setReviewNotesSaving(true);
+    const { data } = await supabase.from('applications').update({ review_notes: notes || null, reviewed_at: new Date().toISOString() }).eq('id', id).select().single();
+    if (data) {
+      setApplications((prev) => prev.map((a) => a.id === id ? data : a));
+      setViewingApplication(data);
+    }
+    setReviewNotesSaving(false);
   }
 
   // ── Downloads ────────────────────────────────────────────────
@@ -1519,6 +1566,10 @@ export default function AdminDashboard() {
                           <td className="px-4 py-3 text-xs text-slate-500">{new Date(a.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1">
+                              <button onClick={() => { setViewingApplication(a as Application); setReviewNotes(a.review_notes ?? ''); }}
+                                className="inline-flex items-center justify-center w-8 h-8 bg-navy-100 text-navy-700 rounded-lg hover:bg-navy-200 transition-colors" title="View Application">
+                                <Eye className="w-4 h-4" />
+                              </button>
                               {a.status === 'pending' && (
                                 <>
                                   <button onClick={() => updateApplicationStatus(a.id, 'accepted')} className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors">Accept</button>
@@ -1536,6 +1587,253 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Application Preview Modal */}
+          {viewingApplication && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setViewingApplication(null)}>
+              <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                {/* Header */}
+                <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
+                  <div className="flex items-center gap-3">
+                    {viewingApplication.passport_photo_url ? (
+                      <img src={viewingApplication.passport_photo_url} alt={viewingApplication.full_name} className="w-10 h-10 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-navy-100 flex items-center justify-center">
+                        <span className="text-sm font-bold text-navy-700">{viewingApplication.full_name[0]?.toUpperCase()}</span>
+                      </div>
+                    )}
+                    <div>
+                      <h2 className="text-lg font-serif font-bold text-navy-900">{viewingApplication.full_name}</h2>
+                      <p className="text-xs text-slate-500">Submitted {new Date(viewingApplication.submitted_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-semibold capitalize ${viewingApplication.status === 'pending' ? 'bg-amber-100 text-amber-700' : viewingApplication.status === 'accepted' ? 'bg-green-100 text-green-700' : viewingApplication.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                      {viewingApplication.status}
+                    </span>
+                    <button onClick={() => setViewingApplication(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="px-6 py-5 space-y-6">
+                  {/* Passport Photo + Signature Panel */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5"><Camera className="w-3.5 h-3.5" /> Passport Photo</p>
+                      {viewingApplication.passport_photo_url ? (
+                        <div className="flex justify-center">
+                          <img src={viewingApplication.passport_photo_url} alt="Passport" className="w-32 h-40 rounded-lg object-cover border border-slate-300 shadow-sm" />
+                        </div>
+                      ) : (
+                        <div className="w-32 h-40 mx-auto rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center">
+                          <span className="text-xs text-slate-400">No photo</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 flex items-center gap-1.5"><Pencil className="w-3.5 h-3.5" /> Signature</p>
+                      {viewingApplication.signature_data_url ? (
+                        <div className="flex justify-center items-center h-40">
+                          <img src={viewingApplication.signature_data_url} alt="Signature" className="max-h-36 max-w-full object-contain rounded-lg border border-slate-300 bg-white shadow-sm p-2" />
+                        </div>
+                      ) : (
+                        <div className="w-full h-40 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center">
+                          <span className="text-xs text-slate-400">No signature</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ── PART A ── */}
+                  <div className="text-center pb-1">
+                    <h3 className="text-sm font-bold tracking-widest text-navy-900">PART A</h3>
+                    <p className="text-xs italic text-slate-400">Personal & Academic Information</p>
+                  </div>
+
+                  {/* Personal Information */}
+                  <section className="border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-navy-50 px-4 py-2.5 flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-gold-500" />
+                      <h4 className="text-sm font-semibold text-navy-900">Personal Information</h4>
+                    </div>
+                    <div className="px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                      <InfoField label="1. Full Name" value={viewingApplication.full_name} />
+                      <InfoField label="3. Gender" value={viewingApplication.gender ? viewingApplication.gender.charAt(0).toUpperCase() + viewingApplication.gender.slice(1) : null} />
+                      <InfoField label="3. Date of Birth" value={viewingApplication.dob ? new Date(viewingApplication.dob).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null} />
+                      <InfoField label="4. Mobile" value={viewingApplication.phone} />
+                      <InfoField label="4. Pin Code" value={viewingApplication.pin_code} />
+                      <InfoField label="5. Email" value={viewingApplication.email} />
+                      <InfoField label="2. Present Address" value={viewingApplication.address} fullWidth />
+                      <InfoField label="10. Marital Status" value={viewingApplication.marital_status ? viewingApplication.marital_status.charAt(0).toUpperCase() + viewingApplication.marital_status.slice(1) : null} />
+                    </div>
+                  </section>
+
+                  {/* Guardian / Family */}
+                  <section className="border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-navy-50 px-4 py-2.5 flex items-center gap-2">
+                      <Users className="w-4 h-4 text-gold-500" />
+                      <h4 className="text-sm font-semibold text-navy-900">Guardian / Family</h4>
+                    </div>
+                    <div className="px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                      <InfoField label="6. Guardian Name" value={viewingApplication.guardian_name} />
+                      <InfoField label="7. Parent's Occupation" value={viewingApplication.parent_occupation} />
+                      <InfoField label="8. Annual Income" value={viewingApplication.annual_income} />
+                      <InfoField label="9. Mother Tongue" value={viewingApplication.mother_tongue} />
+                      <InfoField label="9. Other Languages" value={viewingApplication.other_languages} />
+                    </div>
+                  </section>
+
+                  {/* Academic Information */}
+                  <section className="border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-navy-50 px-4 py-2.5 flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-gold-500" />
+                      <h4 className="text-sm font-semibold text-navy-900">Academic Information</h4>
+                    </div>
+                    <div className="px-4 py-3 space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                        <InfoField label="Course Applied For" value={viewingApplication.course_applied || viewingApplication.applying_for} />
+                        <InfoField label="Previous Education" value={viewingApplication.previous_education} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">11. Academic Qualification History</p>
+                        {viewingApplication.academic_qualifications && viewingApplication.academic_qualifications.length > 0 ? (
+                          <div className="overflow-x-auto rounded-lg border border-slate-200">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="bg-slate-50">
+                                  <th className="text-left px-3 py-2 font-semibold text-navy-800 border-b border-slate-200">Class</th>
+                                  <th className="text-left px-3 py-2 font-semibold text-navy-800 border-b border-slate-200">School / College</th>
+                                  <th className="text-left px-3 py-2 font-semibold text-navy-800 border-b border-slate-200">Pass / Fail</th>
+                                  <th className="text-left px-3 py-2 font-semibold text-navy-800 border-b border-slate-200">Year</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {viewingApplication.academic_qualifications.map((aq, i) => (
+                                  <tr key={i} className="border-b border-slate-100 last:border-0">
+                                    <td className="px-3 py-2 font-medium text-navy-900">{aq.class_name || '—'}</td>
+                                    <td className="px-3 py-2 text-slate-600">{aq.school_college || '—'}</td>
+                                    <td className="px-3 py-2 text-slate-600">{aq.pass_fail || '—'}</td>
+                                    <td className="px-3 py-2 text-slate-500 text-xs">{aq.year || '—'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-slate-400 italic px-3 py-2 bg-slate-50 rounded-lg">No academic qualifications provided.</p>
+                        )}
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* ── PART B ── */}
+                  <div className="text-center pb-1 pt-2">
+                    <h3 className="text-sm font-bold tracking-widest text-navy-900">PART B</h3>
+                    <p className="text-xs italic text-slate-400">Church & Spiritual Background</p>
+                  </div>
+
+                  {/* Church / Spiritual Background */}
+                  <section className="border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-navy-50 px-4 py-2.5 flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-gold-500" />
+                      <h4 className="text-sm font-semibold text-navy-900">Church & Spiritual Background</h4>
+                    </div>
+                    <div className="px-4 py-3 space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                        <InfoField label="1. Born-Again Believer" value={viewingApplication.born_again} />
+                        <InfoField label="2. Water Baptism Date" value={viewingApplication.water_baptism_date} />
+                        <InfoField label="3. Denomination" value={viewingApplication.denomination} />
+                      </div>
+                      <div className="text-sm">
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">4. Church Involvement</p>
+                        <p className="text-slate-700 whitespace-pre-wrap p-3 bg-slate-50 rounded-lg border border-slate-100">{viewingApplication.church_involvement || '—'}</p>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Statement & Calling */}
+                  <section className="border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-navy-50 px-4 py-2.5 flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-gold-500" />
+                      <h4 className="text-sm font-semibold text-navy-900">Statement & Calling</h4>
+                    </div>
+                    <div className="px-4 py-3 space-y-3 text-sm">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">5. Statement of Purpose</p>
+                        <p className="text-slate-700 whitespace-pre-wrap p-3 bg-slate-50 rounded-lg border border-slate-100">{viewingApplication.statement_of_purpose || '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">6. Calling / Aim in Life</p>
+                        <p className="text-slate-700 whitespace-pre-wrap p-3 bg-slate-50 rounded-lg border border-slate-100">{viewingApplication.calling_aim || '—'}</p>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Additional Details */}
+                  <section className="border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-navy-50 px-4 py-2.5 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-gold-500" />
+                      <h4 className="text-sm font-semibold text-navy-900">Additional Details</h4>
+                    </div>
+                    <div className="px-4 py-3 grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-3 text-sm">
+                      <InfoField label="7. Practices Vices (smoking, etc.)" value={viewingApplication.practices_vices === null ? null : viewingApplication.practices_vices ? 'Yes' : 'No'} />
+                      <InfoField label="8. Can Pay Fees" value={viewingApplication.can_pay_fees === null ? null : viewingApplication.can_pay_fees ? 'Yes' : 'No'} />
+                      <InfoField label="9. Fee Sponsor" value={viewingApplication.fee_sponsor ? viewingApplication.fee_sponsor.charAt(0).toUpperCase() + viewingApplication.fee_sponsor.slice(1) : null} />
+                    </div>
+                  </section>
+
+                  {/* Admin Review Notes */}
+                  <section className="border-2 border-amber-200 rounded-xl overflow-hidden bg-amber-50/50">
+                    <div className="bg-amber-100 px-4 py-2.5 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600" />
+                      <h4 className="text-sm font-semibold text-amber-800">Admin Review Notes</h4>
+                    </div>
+                    <div className="px-4 py-3 space-y-2">
+                      <textarea
+                        value={reviewNotes}
+                        onChange={(e) => setReviewNotes(e.target.value)}
+                        placeholder="Add your review notes here (visible to other admins)..."
+                        rows={3}
+                        className="w-full px-3 py-2 text-sm border border-amber-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-300 resize-none"
+                      />
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-slate-400">
+                          {viewingApplication.reviewed_at && `Last reviewed: ${new Date(viewingApplication.reviewed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`}
+                        </p>
+                        <button
+                          onClick={() => saveReviewNotes(viewingApplication.id, reviewNotes)}
+                          disabled={reviewNotesSaving}
+                          className="text-xs px-3 py-1.5 bg-amber-200 text-amber-800 rounded-lg hover:bg-amber-300 transition-colors font-medium inline-flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                          {reviewNotesSaving ? <Loader className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                          Save Notes
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                {/* Footer Actions */}
+                <div className="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-4 flex items-center justify-between gap-3">
+                  <a href={`mailto:${viewingApplication.email}?subject=Application Update - ${viewingApplication.full_name}`} className="btn-secondary text-sm inline-flex items-center gap-2">
+                    <Mail className="w-4 h-4" /> Email Applicant
+                  </a>
+                  <div className="flex items-center gap-2">
+                    {viewingApplication.status === 'pending' ? (
+                      <>
+                        <button onClick={() => { updateApplicationStatus(viewingApplication.id, 'accepted', reviewNotes); setViewingApplication(null); }} className="text-xs px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors font-medium inline-flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Accept</button>
+                        <button onClick={() => { updateApplicationStatus(viewingApplication.id, 'rejected', reviewNotes); setViewingApplication(null); }} className="text-xs px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors font-medium inline-flex items-center gap-1"><X className="w-3.5 h-3.5" /> Reject</button>
+                      </>
+                    ) : (
+                      <button onClick={() => { updateApplicationStatus(viewingApplication.id, 'pending'); setViewingApplication((prev) => prev ? { ...prev, status: 'pending' } : null); }} className="text-xs px-3 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium">Reset Status</button>
+                    )}
+                    <button onClick={() => setViewingApplication(null)} className="btn-primary text-sm">Close</button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

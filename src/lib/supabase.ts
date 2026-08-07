@@ -221,6 +221,17 @@ export type BlogPost = {
   view_count: number;
 };
 
+export type ChatMessage = {
+  id: string;
+  content: string;
+  user_id: string | null;
+  display_name: string;
+  role: string | null;
+  avatar_url: string | null;
+  is_deleted: boolean;
+  created_at: string;
+};
+
 export type SiteSetting = {
   id: string;
   setting_key: string;
