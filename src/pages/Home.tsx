@@ -348,21 +348,19 @@ export default function Home() {
             <p className="text-slate-300 mt-5 text-lg md:text-xl leading-relaxed max-w-xl">
               A theological Institution of Assemblies of God Mizoram District — equipping servant-leaders for the harvest fields.
             </p>
-            <div className="flex flex-wrap items-center gap-3 mt-8">
-              <Link to="/apply" className="btn-gold text-base px-6 py-3">
+            <div className="flex items-center gap-2 sm:gap-3 mt-8">
+              <Link to="/apply" className="btn-gold text-sm sm:text-base px-4 sm:px-6 py-3">
                 Apply Now <ArrowRight className="w-4 h-4" />
               </Link>
-              <Link to="/about" className="px-6 py-3 border border-white/30 text-white rounded-lg font-medium text-base hover:bg-white/10 transition-colors">
+              <div className="flex flex-col items-center justify-center gap-0.5 min-w-8 sm:min-w-10 text-white/80" aria-hidden="true">
+                <span className="text-base sm:text-lg leading-none animate-bounce">↓</span>
+                <span className="text-[9px] sm:text-[10px] uppercase tracking-wider">Scroll</span>
+              </div>
+              <Link to="/about" className="px-4 sm:px-6 py-3 border border-white/30 text-white rounded-lg font-medium text-sm sm:text-base hover:bg-white/10 transition-colors whitespace-nowrap">
                 Learn More
               </Link>
             </div>
           </div>
-        </div>
-
-        {/* Scroll indicator */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 opacity-60">
-          <div className="w-0.5 h-8 bg-white animate-bounce" />
-          <span className="text-white text-xs">Scroll</span>
         </div>
       </section>
 

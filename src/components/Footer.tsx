@@ -5,19 +5,59 @@ import { supabase } from '../lib/supabase';
 
 let siteViewIncremented = false;
 
+type SiteStats = {
+  total_views: number;
+  monthly_views: number;
+  yearly_views: number;
+  month_key: string;
+  year_key: string;
+};
+
 export default function Footer() {
-  const [siteViews, setSiteViews] = useState<number | null>(null);
+  const [stats, setStats] = useState<SiteStats | null>(null);
 
   useEffect(() => {
     let active = true;
+
     (async () => {
-      if (siteViewIncremented) return;
-      siteViewIncremented = true;
-      const { data } = await supabase.rpc('increment_site_view');
-      if (active && data != null) setSiteViews(data as number);
+      if (!siteViewIncremented) {
+        siteViewIncremented = true;
+        await supabase.rpc('increment_site_view');
+      }
+
+      const { data } = await supabase
+        .from('site_stats')
+        .select('total_views, monthly_views, yearly_views, month_key, year_key')
+        .eq('id', 1)
+        .maybeSingle();
+
+      if (active && data) {
+        setStats(data as SiteStats);
+      }
     })();
-    return () => { active = false; };
+
+    const channel = supabase
+      .channel('footer-site-stats')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'site_stats' },
+        (payload) => {
+          if (active) setStats(payload.new as SiteStats);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
   }, []);
+
+  const monthLabel = stats?.month_key
+    ? new Date(`${stats.month_key}-01`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+    : '';
+  const yearLabel = stats?.year_key ?? '';
+
   return (
     <footer className="bg-navy-950 text-white">
       <div className="page-container py-12 md:py-16">
@@ -37,7 +77,7 @@ export default function Footer() {
               A theological Institution of Assemblies of God Mizoram District. Equipping servants of God for ministry.
             </p>
             <p className="text-slate-500 text-xs">
-              Accredited by Pentecostal Association for Theological Accreditation (PATA) and Member of Evangelical Theological College Association (NEI) 
+              Accredited by Pentecostal Association for Theological Accreditation (PATA) and Member of Evangelical Theological College Association (NEI)
             </p>
           </div>
 
@@ -155,13 +195,32 @@ export default function Footer() {
           <p className="text-slate-600 text-xs">
             Assemblies of God Mizoram District
           </p>
-          {siteViews != null && (
-            <p className="text-slate-600 text-xs inline-flex items-center gap-1">
-              <Eye className="w-3.5 h-3.5" />
-              {siteViews.toLocaleString('en-IN')} total views
-            </p>
-          )}
         </div>
+
+        {/* Visitor counters */}
+        {stats && (
+          <div className="border-t border-white/10">
+            <div className="page-container py-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-1.5 text-xs text-slate-400">
+              <span className="inline-flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5 text-gold-500" />
+                <span className="text-slate-500">Total visitors:</span>
+                <span className="font-semibold text-white">{stats.total_views.toLocaleString('en-IN')}</span>
+              </span>
+              <span className="hidden sm:inline text-slate-700">·</span>
+              <span className="inline-flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5 text-gold-500" />
+                <span className="text-slate-500">This month{monthLabel ? ` (${monthLabel})` : ''}:</span>
+                <span className="font-semibold text-white">{stats.monthly_views.toLocaleString('en-IN')}</span>
+              </span>
+              <span className="hidden sm:inline text-slate-700">·</span>
+              <span className="inline-flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5 text-gold-500" />
+                <span className="text-slate-500">This year{yearLabel ? ` (${yearLabel})` : ''}:</span>
+                <span className="font-semibold text-white">{stats.yearly_views.toLocaleString('en-IN')}</span>
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     </footer>
   );
