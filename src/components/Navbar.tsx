@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { Menu, X, ChevronDown, User, LogOut, LayoutDashboard, CreditCard, Bell, BellOff, Download } from 'lucide-react';
+import { Menu, X, ChevronDown, User, LogOut, LayoutDashboard, CreditCard, Bell, BellOff, Download, UserPlus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 
@@ -341,6 +341,11 @@ export default function Navbar() {
                           <CreditCard className="w-4 h-4" /> Transactions
                         </Link>
                       )}
+                      {(profile?.role === 'admin' || profile?.role === 'faculty' || profile?.role === 'finance') && (
+                        <Link to="/transactions?add_student=true" className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                          <UserPlus className="w-4 h-4" /> Add Student
+                        </Link>
+                      )}
                       {profile?.role === 'student' && (
                         <Link to="/transactions" className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
                           <CreditCard className="w-4 h-4" /> My Payments
@@ -551,6 +556,11 @@ export default function Navbar() {
                     {profile?.role === 'finance' && (
                       <Link to="/transactions" className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 rounded-lg">
                         <CreditCard className="w-4 h-4" /> Transactions
+                      </Link>
+                    )}
+                    {(profile?.role === 'admin' || profile?.role === 'faculty' || profile?.role === 'finance') && (
+                      <Link to="/transactions?add_student=true" className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/10 rounded-lg">
+                        <UserPlus className="w-4 h-4" /> Add Student
                       </Link>
                     )}
                     {profile?.role === 'student' && (

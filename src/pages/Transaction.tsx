@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CreditCard, Search, Plus, Trash2, DollarSign, Calendar, User, AlertCircle, X, Bell, CheckCircle, Loader, IndianRupee, Send, UserPlus } from 'lucide-react';
 import { supabase, Transaction as Tx, Profile } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,6 +22,7 @@ type PaymentRequest = {
 
 export default function Transaction() {
   const { profile } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isAdmin = profile?.role === 'admin';
   const isFaculty = profile?.role === 'faculty';
   const isFinance = profile?.role === 'finance';
@@ -87,6 +89,14 @@ export default function Transaction() {
   const [addStudentForm, setAddStudentForm] = useState({ full_name: '', email: '', phone: '', student_year: '', course: '' });
   const [savingStudent, setSavingStudent] = useState(false);
   const [studentError, setStudentError] = useState('');
+
+  useEffect(() => {
+    if (searchParams.get('add_student') === 'true' && canSearchAll) {
+      setShowAddStudent(true);
+      setStudentError('');
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (isStudent) {
@@ -740,14 +750,6 @@ export default function Transaction() {
                 <h2 className="font-semibold text-navy-900 flex items-center gap-2">
                   <Search className="w-4 h-4 text-gold-500" /> Search Student
                 </h2>
-                {canSearchAll && (
-                  <button
-                    onClick={() => { setShowAddStudent(true); setStudentError(''); }}
-                    className="flex items-center gap-1.5 text-xs font-semibold text-navy-700 hover:text-gold-600 transition-colors"
-                  >
-                    <UserPlus className="w-3.5 h-3.5" /> Add Student
-                  </button>
-                )}
               </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
