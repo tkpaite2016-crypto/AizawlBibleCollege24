@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CreditCard, Search, Plus, Trash2, DollarSign, Calendar, User, AlertCircle, X, Bell, CheckCircle, Loader, IndianRupee, Send } from 'lucide-react';
+import { CreditCard, Search, Plus, Trash2, DollarSign, Calendar, User, AlertCircle, X, Bell, CheckCircle, Loader, IndianRupee, Send, UserPlus } from 'lucide-react';
 import { supabase, Transaction as Tx, Profile } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -82,6 +82,12 @@ export default function Transaction() {
   const [sendingNotif, setSendingNotif] = useState(false);
   const [notifSent, setNotifSent] = useState(false);
 
+  // Add student form (admin/faculty/finance)
+  const [showAddStudent, setShowAddStudent] = useState(false);
+  const [addStudentForm, setAddStudentForm] = useState({ full_name: '', email: '', phone: '', student_year: '', course: '' });
+  const [savingStudent, setSavingStudent] = useState(false);
+  const [studentError, setStudentError] = useState('');
+
   useEffect(() => {
     if (isStudent) {
       loadMyTx();
@@ -162,6 +168,53 @@ export default function Transaction() {
       .limit(10);
     setSearchResults(data ?? []);
     setSearching(false);
+  }
+
+  async function addStudent(e: React.FormEvent) {
+    e.preventDefault();
+    setStudentError('');
+    setSavingStudent(true);
+
+    const { data: existing } = await supabase
+      .from('profiles')
+      .select('id')
+      .ilike('email', addStudentForm.email || '___nomatch___')
+      .maybeSingle();
+
+    if (existing) {
+      setStudentError('A student with this email already exists. Try searching for them instead.');
+      setSavingStudent(false);
+      return;
+    }
+
+    const { data, error } = await supabase.rpc('create_student_profile', {
+      p_full_name: addStudentForm.full_name.trim(),
+      p_email: addStudentForm.email.trim() || null,
+      p_phone: addStudentForm.phone.trim() || null,
+      p_student_year: addStudentForm.student_year || null,
+      p_course: addStudentForm.course || null,
+    });
+
+    if (error) {
+      setStudentError(error.message);
+      setSavingStudent(false);
+      return;
+    }
+
+    const newId = data as string;
+    setShowAddStudent(false);
+    setAddStudentForm({ full_name: '', email: '', phone: '', student_year: '', course: '' });
+    setSavingStudent(false);
+
+    const { data: newProfile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', newId)
+      .maybeSingle();
+
+    if (newProfile) {
+      await selectUser(newProfile as Profile);
+    }
   }
 
   async function selectUser(user: Profile) {
@@ -683,9 +736,19 @@ export default function Transaction() {
           {/* Search panel */}
           <div className="lg:col-span-1 space-y-4">
             <div className="card p-5">
-              <h2 className="font-semibold text-navy-900 mb-3 flex items-center gap-2">
-                <Search className="w-4 h-4 text-gold-500" /> Search Student
-              </h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-semibold text-navy-900 flex items-center gap-2">
+                  <Search className="w-4 h-4 text-gold-500" /> Search Student
+                </h2>
+                {canSearchAll && (
+                  <button
+                    onClick={() => { setShowAddStudent(true); setStudentError(''); }}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-navy-700 hover:text-gold-600 transition-colors"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" /> Add Student
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
@@ -998,6 +1061,94 @@ export default function Transaction() {
           </div>
         </div>
       </div>
+
+      {/* Add Student modal */}
+      {showAddStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddStudent(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-serif font-bold text-navy-900 flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-gold-500" /> Add New Student
+              </h2>
+              <button onClick={() => setShowAddStudent(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {studentError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2 mb-4">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />{studentError}
+              </div>
+            )}
+
+            <form onSubmit={addStudent} className="space-y-3">
+              <div>
+                <label className="label">Full Name</label>
+                <input
+                  value={addStudentForm.full_name}
+                  onChange={(e) => setAddStudentForm((f) => ({ ...f, full_name: e.target.value }))}
+                  className="input-field"
+                  placeholder="Student's full name"
+                  required
+                />
+              </div>
+              <div>
+                <label className="label">Email (optional)</label>
+                <input
+                  type="email"
+                  value={addStudentForm.email}
+                  onChange={(e) => setAddStudentForm((f) => ({ ...f, email: e.target.value }))}
+                  className="input-field"
+                  placeholder="student@example.com"
+                />
+              </div>
+              <div>
+                <label className="label">Phone (optional)</label>
+                <input
+                  value={addStudentForm.phone}
+                  onChange={(e) => setAddStudentForm((f) => ({ ...f, phone: e.target.value }))}
+                  className="input-field"
+                  placeholder="Phone number"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Year</label>
+                  <select
+                    value={addStudentForm.student_year}
+                    onChange={(e) => setAddStudentForm((f) => ({ ...f, student_year: e.target.value }))}
+                    className="input-field"
+                  >
+                    <option value="">Select...</option>
+                    <option value="1st_year">1st Year</option>
+                    <option value="2nd_year">2nd Year</option>
+                    <option value="final_year">Final Year</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Course</label>
+                  <select
+                    value={addStudentForm.course}
+                    onChange={(e) => setAddStudentForm((f) => ({ ...f, course: e.target.value }))}
+                    className="input-field"
+                  >
+                    <option value="">Select...</option>
+                    <option value="BTh">BTh</option>
+                    <option value="DipTh">DipTh</option>
+                    <option value="CTh">CTh</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button type="submit" disabled={savingStudent || !addStudentForm.full_name.trim()} className="btn-primary flex-1 justify-center">
+                  {savingStudent ? <><Loader className="w-4 h-4 animate-spin" /> Adding...</> : <><UserPlus className="w-4 h-4" /> Add Student</>}
+                </button>
+                <button type="button" onClick={() => setShowAddStudent(false)} className="btn-secondary">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
