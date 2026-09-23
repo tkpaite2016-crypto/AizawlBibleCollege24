@@ -89,6 +89,7 @@ export default function Transaction() {
   const [addStudentForm, setAddStudentForm] = useState({ full_name: '', email: '', phone: '', student_year: '', course: '' });
   const [savingStudent, setSavingStudent] = useState(false);
   const [studentError, setStudentError] = useState('');
+  const [createdStudent, setCreatedStudent] = useState<{ name: string; email: string; password: string } | null>(null);
 
   useEffect(() => {
     if (searchParams.get('add_student') === 'true' && canSearchAll) {
@@ -197,29 +198,52 @@ export default function Transaction() {
       return;
     }
 
-    const { data, error } = await supabase.rpc('create_student_profile', {
-      p_full_name: addStudentForm.full_name.trim(),
-      p_email: addStudentForm.email.trim() || null,
-      p_phone: addStudentForm.phone.trim() || null,
-      p_student_year: addStudentForm.student_year || null,
-      p_course: addStudentForm.course || null,
-    });
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
 
-    if (error) {
-      setStudentError(error.message);
+    if (!accessToken) {
+      setStudentError('Your session has expired. Please sign in again.');
       setSavingStudent(false);
       return;
     }
 
-    const newId = data as string;
-    setShowAddStudent(false);
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-student-auth`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        full_name: addStudentForm.full_name.trim(),
+        email: addStudentForm.email.trim(),
+        phone: addStudentForm.phone.trim(),
+        student_year: addStudentForm.student_year || null,
+        course: addStudentForm.course || null,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      setStudentError(result.error || 'Failed to create student account');
+      setSavingStudent(false);
+      return;
+    }
+
+    setCreatedStudent({
+      name: addStudentForm.full_name.trim(),
+      email: addStudentForm.email.trim(),
+      password: result.password,
+    });
     setAddStudentForm({ full_name: '', email: '', phone: '', student_year: '', course: '' });
     setSavingStudent(false);
 
+    // Load the new student's profile into the transaction panel
     const { data: newProfile } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', newId)
+      .eq('id', result.user_id)
       .maybeSingle();
 
     if (newProfile) {
@@ -1066,13 +1090,13 @@ export default function Transaction() {
 
       {/* Add Student modal */}
       {showAddStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddStudent(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => { setShowAddStudent(false); setCreatedStudent(null); }}>
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-serif font-bold text-navy-900 flex items-center gap-2">
                 <UserPlus className="w-5 h-5 text-gold-500" /> Add New Student
               </h2>
-              <button onClick={() => setShowAddStudent(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => { setShowAddStudent(false); setCreatedStudent(null); }} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1083,71 +1107,101 @@ export default function Transaction() {
               </div>
             )}
 
-            <form onSubmit={addStudent} className="space-y-3">
-              <div>
-                <label className="label">Full Name</label>
-                <input
-                  value={addStudentForm.full_name}
-                  onChange={(e) => setAddStudentForm((f) => ({ ...f, full_name: e.target.value }))}
-                  className="input-field"
-                  placeholder="Student's full name"
-                  required
-                />
-              </div>
-              <div>
-                <label className="label">Email (optional)</label>
-                <input
-                  type="email"
-                  value={addStudentForm.email}
-                  onChange={(e) => setAddStudentForm((f) => ({ ...f, email: e.target.value }))}
-                  className="input-field"
-                  placeholder="student@example.com"
-                />
-              </div>
-              <div>
-                <label className="label">Phone (optional)</label>
-                <input
-                  value={addStudentForm.phone}
-                  onChange={(e) => setAddStudentForm((f) => ({ ...f, phone: e.target.value }))}
-                  className="input-field"
-                  placeholder="Phone number"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">Year</label>
-                  <select
-                    value={addStudentForm.student_year}
-                    onChange={(e) => setAddStudentForm((f) => ({ ...f, student_year: e.target.value }))}
-                    className="input-field"
-                  >
-                    <option value="">Select...</option>
-                    <option value="1st_year">1st Year</option>
-                    <option value="2nd_year">2nd Year</option>
-                    <option value="final_year">Final Year</option>
-                  </select>
+            {createdStudent ? (
+              <div className="space-y-4">
+                <div className="p-4 bg-green-50 border border-green-200 rounded-xl flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-green-800 text-sm">Student account created!</p>
+                    <p className="text-green-700 text-xs mt-1">{createdStudent.name} can now sign in.</p>
+                  </div>
                 </div>
-                <div>
-                  <label className="label">Course</label>
-                  <select
-                    value={addStudentForm.course}
-                    onChange={(e) => setAddStudentForm((f) => ({ ...f, course: e.target.value }))}
-                    className="input-field"
-                  >
-                    <option value="">Select...</option>
-                    <option value="BTh">BTh</option>
-                    <option value="DipTh">DipTh</option>
-                    <option value="CTh">CTh</option>
-                  </select>
+                <div className="p-4 bg-navy-50 border border-navy-200 rounded-xl space-y-2">
+                  <div>
+                    <p className="text-xs text-slate-500 font-medium">Login Email</p>
+                    <p className="text-sm font-mono text-navy-900">{createdStudent.email}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 font-medium">Generated Password</p>
+                    <p className="text-sm font-mono text-navy-900 font-bold tracking-wider">{createdStudent.password}</p>
+                  </div>
+                  <p className="text-xs text-slate-500 pt-1 border-t border-navy-100">
+                    The password is the last 4 letters of the email username + last 4 digits of the phone number, all lowercase. Share this with the student so they can sign in.
+                  </p>
                 </div>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button type="submit" disabled={savingStudent || !addStudentForm.full_name.trim()} className="btn-primary flex-1 justify-center">
-                  {savingStudent ? <><Loader className="w-4 h-4 animate-spin" /> Adding...</> : <><UserPlus className="w-4 h-4" /> Add Student</>}
+                <button onClick={() => { setShowAddStudent(false); setCreatedStudent(null); }} className="btn-primary w-full justify-center">
+                  Done
                 </button>
-                <button type="button" onClick={() => setShowAddStudent(false)} className="btn-secondary">Cancel</button>
               </div>
-            </form>
+            ) : (
+              <form onSubmit={addStudent} className="space-y-3">
+                <div>
+                  <label className="label">Full Name</label>
+                  <input
+                    value={addStudentForm.full_name}
+                    onChange={(e) => setAddStudentForm((f) => ({ ...f, full_name: e.target.value }))}
+                    className="input-field"
+                    placeholder="Student's full name"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label">Email</label>
+                  <input
+                    type="email"
+                    value={addStudentForm.email}
+                    onChange={(e) => setAddStudentForm((f) => ({ ...f, email: e.target.value }))}
+                    className="input-field"
+                    placeholder="student@example.com"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="label">Phone</label>
+                  <input
+                    value={addStudentForm.phone}
+                    onChange={(e) => setAddStudentForm((f) => ({ ...f, phone: e.target.value }))}
+                    className="input-field"
+                    placeholder="Phone number (min 4 digits)"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Year</label>
+                    <select
+                      value={addStudentForm.student_year}
+                      onChange={(e) => setAddStudentForm((f) => ({ ...f, student_year: e.target.value }))}
+                      className="input-field"
+                    >
+                      <option value="">Select...</option>
+                      <option value="1st_year">1st Year</option>
+                      <option value="2nd_year">2nd Year</option>
+                      <option value="final_year">Final Year</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Course</label>
+                    <select
+                      value={addStudentForm.course}
+                      onChange={(e) => setAddStudentForm((f) => ({ ...f, course: e.target.value }))}
+                      className="input-field"
+                    >
+                      <option value="">Select...</option>
+                      <option value="BTh">BTh</option>
+                      <option value="DipTh">DipTh</option>
+                      <option value="CTh">CTh</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button type="submit" disabled={savingStudent || !addStudentForm.full_name.trim() || !addStudentForm.email.trim() || !addStudentForm.phone.trim()} className="btn-primary flex-1 justify-center">
+                    {savingStudent ? <><Loader className="w-4 h-4 animate-spin" /> Adding...</> : <><UserPlus className="w-4 h-4" /> Add Student</>}
+                  </button>
+                  <button type="button" onClick={() => setShowAddStudent(false)} className="btn-secondary">Cancel</button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

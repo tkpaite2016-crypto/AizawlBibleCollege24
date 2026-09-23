@@ -1,0 +1,14 @@
+[functions.send-contact-email]
+verify_jwt = false
+
+[functions.delete-user-auth]
+verify_jwt = false
+
+[functions.send-push-notification]
+verify_jwt = false
+
+[functions.send-scheduled-notifications]
+verify_jwt = false
+
+[functions.create-student-auth]
+verify_jwt = false
