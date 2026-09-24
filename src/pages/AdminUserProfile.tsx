@@ -6,7 +6,7 @@ import {
   DollarSign, Sparkles, Palette,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import type { Profile, Transaction } from '../lib/supabase';
+import type { Profile, Transaction, StudentMarksheet, StudentMark } from '../lib/supabase';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { CertificateDocument } from '../components/CertificateDocument';
 import { getTheme } from '../lib/themes';
@@ -26,6 +26,8 @@ export default function AdminUserProfile() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [application, setApplication] = useState<ApplicationSummary | null>(null);
+  const [marksheet, setMarksheet] = useState<StudentMarksheet | null>(null);
+  const [marksheetMarks, setMarksheetMarks] = useState<StudentMark[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -38,10 +40,11 @@ export default function AdminUserProfile() {
     setLoading(true);
     setError('');
 
-    const [profileRes, txRes, appRes] = await Promise.all([
+    const [profileRes, txRes, appRes, msRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).single(),
       supabase.from('transactions').select('*').eq('user_id', userId).order('payment_date', { ascending: false }),
       supabase.from('applications').select('id, status, course_applied, applying_for, submitted_at').eq('user_id', userId).order('submitted_at', { ascending: false }).limit(1).maybeSingle(),
+      supabase.from('student_marksheets').select('*').eq('student_id', userId).maybeSingle(),
     ]);
 
     if (profileRes.error) {
@@ -52,6 +55,15 @@ export default function AdminUserProfile() {
 
     setTransactions(txRes.data ?? []);
     setApplication(appRes.data ?? null);
+
+    if (msRes.data) {
+      setMarksheet(msRes.data as StudentMarksheet);
+      const { data: mkData } = await supabase.from('student_marks').select('*').eq('marksheet_id', msRes.data.id).order('year_of_study').order('semester').order('display_order');
+      setMarksheetMarks((mkData as StudentMark[]) ?? []);
+    } else {
+      setMarksheet(null);
+      setMarksheetMarks([]);
+    }
     setLoading(false);
   }
 
@@ -442,6 +454,55 @@ export default function AdminUserProfile() {
             </table>
           )}
         </div>}
+
+        {/* Marksheet — staff only (admin/faculty), not visible to students or visitors */}
+        {marksheet && marksheetMarks.length > 0 && (
+          <div className="card overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-navy-900 flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-gold-500" /> Academic Marksheet
+              </h2>
+              <div className="flex gap-4 text-xs">
+                {marksheet.final_grade && <span className="font-semibold text-navy-900">Grade: {marksheet.final_grade}</span>}
+                {marksheet.gpa != null && <span className="font-semibold text-navy-900">GPA: {marksheet.gpa.toFixed(2)}</span>}
+                {marksheet.class_result && <span className="font-semibold text-navy-900">{marksheet.class_result}</span>}
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-slate-500 uppercase text-xs tracking-wide">
+                  <tr>
+                    <th className="px-4 py-3 text-left">Year</th>
+                    <th className="px-4 py-3 text-left">Sem</th>
+                    <th className="px-4 py-3 text-left">Academic Year</th>
+                    <th className="px-4 py-3 text-left">Subject</th>
+                    <th className="px-4 py-3 text-left">Credits</th>
+                    <th className="px-4 py-3 text-left">Marks</th>
+                    <th className="px-4 py-3 text-left">Grade</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {marksheetMarks.map((m, i) => (
+                    <tr key={i} className="hover:bg-slate-50">
+                      <td className="px-4 py-3 font-medium text-navy-900">Year {m.year_of_study}</td>
+                      <td className="px-4 py-3 text-slate-600">Sem {m.semester}</td>
+                      <td className="px-4 py-3 text-slate-600">{m.academic_year || '—'}</td>
+                      <td className="px-4 py-3 font-medium text-navy-900">{m.subject_name}</td>
+                      <td className="px-4 py-3 text-slate-600">{m.credit_hours}</td>
+                      <td className="px-4 py-3 text-slate-700 font-semibold">{m.marks}</td>
+                      <td className="px-4 py-3"><span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-navy-100 text-navy-700">{m.grade || '—'}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {marksheet.remarks && (
+              <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 text-sm text-slate-600">
+                <span className="font-semibold text-navy-900">Remarks: </span>{marksheet.remarks}
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
     </div>

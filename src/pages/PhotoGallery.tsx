@@ -236,19 +236,17 @@ export default function PhotoGallery() {
           >
             <ChevronLeft className="w-9 h-9" />
           </button>
-            <div className="max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-end gap-2 mb-2">
-              {canUpload && (
-                <>
-                  <button onClick={(e) => { e.stopPropagation(); openEdit(filtered[lightbox]); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors">
-                    <Pencil className="w-3.5 h-3.5" /> Edit
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this photo?')) { deletePhoto(filtered[lightbox]); setLightbox(null); } }} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors">
-                    <Trash2 className="w-3.5 h-3.5" /> Delete
-                  </button>
-                </>
-              )}
-            </div>
+          <div className="max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
+            {canUpload && (
+              <div className="flex items-center justify-end gap-2 mb-2">
+                <button onClick={(e) => { e.stopPropagation(); openEdit(filtered[lightbox]); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors">
+                  <Pencil className="w-3.5 h-3.5" /> Edit
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this photo?')) { deletePhoto(filtered[lightbox]); setLightbox(null); } }} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors">
+                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                </button>
+              </div>
+            )}
             <img
               src={filtered[lightbox].image_url}
               alt={filtered[lightbox].title ?? ''}
