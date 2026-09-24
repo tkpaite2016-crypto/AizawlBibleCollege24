@@ -221,6 +221,48 @@ export type BlogPost = {
   view_count: number;
 };
 
+export type AcademicSubject = {
+  id: string;
+  academic_year: string;
+  year_of_study: number;
+  semester: number;
+  subject_name: string;
+  credit_hours: number;
+  display_order: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type StudentMark = {
+  id?: string;
+  marksheet_id?: string;
+  academic_year: string;
+  year_of_study: number;
+  semester: number;
+  subject_name: string;
+  credit_hours: number;
+  marks: number;
+  grade: string;
+  display_order: number;
+};
+
+export type StudentMarksheet = {
+  id: string;
+  student_id: string;
+  course: string | null;
+  study_year_label: string | null;
+  class_result: string | null;
+  final_grade: string | null;
+  gpa: number | null;
+  remarks: string | null;
+  issued_by: string | null;
+  created_at: string;
+  updated_at: string;
+  student?: Profile;
+  marks?: StudentMark[];
+};
+
 export type ChatMessage = {
   id: string;
   content: string;

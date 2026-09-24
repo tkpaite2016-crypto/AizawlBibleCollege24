@@ -42,6 +42,7 @@ import CertificatePreview from './pages/CertificatePreview';
 import BlogEditor from './pages/BlogEditor';
 import BlogPostPage from './pages/BlogPostPage';
 import BlogList from './pages/BlogList';
+import AcademicRecords from './pages/AcademicRecords';
 
 function ProtectedRoute({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string[] }) {
   const { user, profile, loading } = useAuth();
@@ -129,6 +130,10 @@ export default function App() {
                 <Route
                   path="/transactions"
                   element={<ProtectedRoute requiredRole={['admin', 'faculty', 'student', 'finance']}><Transaction /></ProtectedRoute>}
+                />
+                <Route
+                  path="/academic-records"
+                  element={<ProtectedRoute requiredRole={['admin', 'faculty']}><AcademicRecords /></ProtectedRoute>}
                 />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>

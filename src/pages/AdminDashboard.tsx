@@ -666,6 +666,16 @@ export default function AdminDashboard() {
     if (data) setApplications((prev) => prev.map((a) => a.id === id ? data : a));
   }
 
+  async function deleteApplication(id: string) {
+    const { error } = await supabase.rpc('delete_application', { p_application_id: id });
+    if (error) {
+      toast.error('Could not delete application.');
+      return;
+    }
+    setApplications((prev) => prev.filter((a) => a.id !== id));
+    toast.success('Application deleted.');
+  }
+
   async function saveReviewNotes(id: string, notes: string) {
     setReviewNotesSaving(true);
     const { data } = await supabase.from('applications').update({ review_notes: notes || null, reviewed_at: new Date().toISOString() }).eq('id', id).select().single();
@@ -1579,6 +1589,9 @@ export default function AdminDashboard() {
                               {a.status !== 'pending' && (
                                 <button onClick={() => updateApplicationStatus(a.id, 'pending')} className="text-xs px-2 py-1 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors">Reset</button>
                               )}
+                              <button onClick={() => setConfirmConfig({ title: 'Delete Application', message: `Delete ${a.full_name}'s application? This cannot be undone.`, confirmLabel: 'Delete', danger: true, onConfirm: () => { deleteApplication(a.id); setConfirmConfig(null); } })} className="inline-flex items-center justify-center w-8 h-8 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors" title="Delete Application">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </div>
                           </td>
                         </tr>

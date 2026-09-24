@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Image, Upload, X, ChevronLeft, ChevronRight, AlertCircle, Loader, ExternalLink } from 'lucide-react';
+import { Image, Upload, X, ChevronLeft, ChevronRight, AlertCircle, Loader, ExternalLink, Pencil, Trash2, Save } from 'lucide-react';
 import { supabase, Photo } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -17,6 +17,10 @@ export default function PhotoGallery() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const [uploadError, setUploadError] = useState('');
+  const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
+  const [editForm, setEditForm] = useState({ title: '', description: '', album: '', link_url: '', is_published: true });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState('');
 
   const canUpload = profile?.role === 'admin' || profile?.role === 'faculty';
 
@@ -109,6 +113,41 @@ export default function PhotoGallery() {
     setUploadForm((f) => ({ ...f, files: f.files.filter((_, i) => i !== index) }));
   }
 
+  function openEdit(photo: Photo) {
+    setEditingPhoto(photo);
+    setEditForm({ title: photo.title ?? '', description: photo.description ?? '', album: photo.album ?? '', link_url: photo.link_url ?? '', is_published: photo.is_published });
+    setEditError('');
+  }
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingPhoto) return;
+    setSavingEdit(true);
+    setEditError('');
+    const { error } = await supabase.rpc('update_gallery_photo', {
+      p_photo_id: editingPhoto.id,
+      p_title: editForm.title,
+      p_description: editForm.description,
+      p_album: editForm.album,
+      p_link_url: editForm.link_url,
+      p_is_published: editForm.is_published,
+    });
+    if (error) {
+      setEditError('Could not save changes.');
+      setSavingEdit(false);
+      return;
+    }
+    setPhotos((prev) => prev.map((p) => p.id === editingPhoto.id ? { ...p, title: editForm.title || null, description: editForm.description || null, album: editForm.album, link_url: editForm.link_url || null, is_published: editForm.is_published } : p));
+    setEditingPhoto(null);
+    setSavingEdit(false);
+  }
+
+  async function deletePhoto(photo: Photo) {
+    const { error } = await supabase.from('photos').delete().eq('id', photo.id);
+    if (error) return;
+    setPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+  }
+
   return (
     <div className="page-enter">
       {/* Hero */}
@@ -197,7 +236,19 @@ export default function PhotoGallery() {
           >
             <ChevronLeft className="w-9 h-9" />
           </button>
-          <div className="max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-end gap-2 mb-2">
+              {canUpload && (
+                <>
+                  <button onClick={(e) => { e.stopPropagation(); openEdit(filtered[lightbox]); }} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-medium transition-colors">
+                    <Pencil className="w-3.5 h-3.5" /> Edit
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this photo?')) { deletePhoto(filtered[lightbox]); setLightbox(null); } }} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                  </button>
+                </>
+              )}
+            </div>
             <img
               src={filtered[lightbox].image_url}
               alt={filtered[lightbox].title ?? ''}
@@ -229,6 +280,35 @@ export default function PhotoGallery() {
       )}
 
       {/* Upload modal */}
+
+      {/* Edit Photo modal */}
+      {editingPhoto && canUpload && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setEditingPhoto(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-serif font-bold text-navy-900">Edit Photo</h2>
+              <button onClick={() => setEditingPhoto(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+            </div>
+            {editError && (
+              <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg mb-4 text-red-700 text-sm">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />{editError}
+              </div>
+            )}
+            <form onSubmit={saveEdit} className="space-y-3">
+              <div><label className="label">Title</label><input value={editForm.title} onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))} className="input-field" /></div>
+              <div><label className="label">Description</label><textarea value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} className="input-field resize-none min-h-16" /></div>
+              <div><label className="label">Album</label><input value={editForm.album} onChange={(e) => setEditForm((f) => ({ ...f, album: e.target.value }))} className="input-field" /></div>
+              <div><label className="label">Link URL</label><input type="url" value={editForm.link_url} onChange={(e) => setEditForm((f) => ({ ...f, link_url: e.target.value }))} className="input-field" /></div>
+              <div className="flex items-center gap-2"><input type="checkbox" id="photo_published" checked={editForm.is_published} onChange={(e) => setEditForm((f) => ({ ...f, is_published: e.target.checked }))} className="rounded" /><label htmlFor="photo_published" className="text-sm text-slate-700">Published (visible to visitors)</label></div>
+              <div className="flex gap-2 pt-2">
+                <button type="submit" disabled={savingEdit} className="btn-primary flex-1 justify-center">{savingEdit ? <><Loader className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save Changes</>}</button>
+                <button type="button" onClick={() => setEditingPhoto(null)} className="btn-secondary">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {showUpload && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowUpload(false)}>
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
