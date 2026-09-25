@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Search, Plus, Trash2, Save, X, Loader, GraduationCap, BookOpen, ArrowUp, ArrowDown, FileText, Award, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, Plus, Trash2, Save, X, Loader, GraduationCap, BookOpen, ArrowUp, ArrowDown, FileText, Award, AlertCircle, ChevronDown, ChevronRight, Download, Sparkles } from 'lucide-react';
+import { PDFDownloadLink } from '@react-pdf/renderer';
 import { supabase } from '../lib/supabase';
 import type { Profile, AcademicSubject, StudentMarksheet, StudentMark } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { MarksheetDocument } from '../components/MarksheetDocument';
 
 type SubjectForm = {
   id?: string;
@@ -113,6 +115,32 @@ export default function AcademicRecords() {
 
   function addMarkRow(year: number, semester: number) {
     setMarks((prev) => [...prev, { academic_year: '', year_of_study: year, semester, subject_name: '', credit_hours: 3, marks: 0, grade: '', display_order: prev.length }]);
+  }
+
+  async function autoFetchSubjects(year: number, semester: number) {
+    const { data } = await supabase
+      .from('academic_subjects')
+      .select('*')
+      .eq('year_of_study', year)
+      .eq('semester', semester)
+      .order('display_order');
+    if (!data || data.length === 0) return;
+    const existing = new Set(marks.filter((m) => m.year_of_study === year && m.semester === semester).map((m) => m.subject_name));
+    const newRows: StudentMark[] = (data as AcademicSubject[])
+      .filter((s) => !existing.has(s.subject_name))
+      .map((s, i) => ({
+        academic_year: s.academic_year,
+        year_of_study: s.year_of_study,
+        semester: s.semester,
+        subject_name: s.subject_name,
+        credit_hours: s.credit_hours,
+        marks: 0,
+        grade: '',
+        display_order: marks.length + i,
+      }));
+    if (newRows.length > 0) {
+      setMarks((prev) => [...prev, ...newRows]);
+    }
   }
 
   function updateMark(index: number, field: keyof StudentMark, value: any) {
@@ -362,9 +390,35 @@ export default function AcademicRecords() {
                     <h2 className="font-serif font-bold text-navy-900">Marksheet: {selectedStudent.full_name ?? 'Unknown'}</h2>
                     <p className="text-xs text-slate-500">{selectedStudent.course || 'No course'} · {selectedStudent.email}</p>
                   </div>
-                  <button onClick={saveMarksheet} disabled={savingMarksheet} className="btn-primary text-sm">
-                    {savingMarksheet ? <><Loader className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save Marksheet</>}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {marksheet && marks.length > 0 && marks.some((m) => m.subject_name.trim()) && (
+                      <PDFDownloadLink
+                        document={
+                          <MarksheetDocument
+                            studentName={selectedStudent.full_name || 'Student'}
+                            course={selectedStudent.course || ''}
+                            abNumber={(selectedStudent as any).ab_number}
+                            pataRegNo={(selectedStudent as any).pata_reg_no}
+                            marks={marks.filter((m) => m.subject_name.trim())}
+                            finalGrade={marksheet.final_grade ?? undefined}
+                            gpa={marksheet.gpa}
+                            classResult={marksheet.class_result ?? undefined}
+                            remarks={marksheet.remarks ?? undefined}
+                            generatedDate={new Date().toISOString()}
+                          />
+                        }
+                        fileName={`${selectedStudent.full_name?.replace(/\s+/g, '_') || 'Student'}_Marksheet.pdf`}
+                        className="btn-secondary text-sm flex items-center gap-2"
+                      >
+                        {({ loading: l }) => (
+                          <>{l ? <><Loader className="w-4 h-4 animate-spin" /> Preparing...</> : <><Download className="w-4 h-4" /> Download PDF</>}</>
+                        )}
+                      </PDFDownloadLink>
+                    )}
+                    <button onClick={saveMarksheet} disabled={savingMarksheet} className="btn-primary text-sm">
+                      {savingMarksheet ? <><Loader className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save Marksheet</>}
+                    </button>
+                  </div>
                 </div>
 
                 {marksheetError && (
@@ -443,14 +497,25 @@ export default function AcademicRecords() {
                       </table>
                     </div>
 
-                    {/* Add mark row buttons */}
-                    <div className="flex flex-wrap gap-2">
-                      <button onClick={() => addMarkRow(1, 1)} className="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded-lg hover:bg-navy-200 transition-colors"><Plus className="w-3 h-3 inline" /> Year 1 Sem 1</button>
-                      <button onClick={() => addMarkRow(1, 2)} className="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded-lg hover:bg-navy-200 transition-colors"><Plus className="w-3 h-3 inline" /> Year 1 Sem 2</button>
-                      <button onClick={() => addMarkRow(2, 1)} className="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded-lg hover:bg-navy-200 transition-colors"><Plus className="w-3 h-3 inline" /> Year 2 Sem 1</button>
-                      <button onClick={() => addMarkRow(2, 2)} className="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded-lg hover:bg-navy-200 transition-colors"><Plus className="w-3 h-3 inline" /> Year 2 Sem 2</button>
-                      <button onClick={() => addMarkRow(3, 1)} className="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded-lg hover:bg-navy-200 transition-colors"><Plus className="w-3 h-3 inline" /> Year 3 Sem 1</button>
-                      <button onClick={() => addMarkRow(3, 2)} className="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded-lg hover:bg-navy-200 transition-colors"><Plus className="w-3 h-3 inline" /> Year 3 Sem 2</button>
+                    {/* Auto-fetch and add mark row buttons */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-medium text-slate-500 flex items-center gap-1"><Sparkles className="w-3 h-3 text-gold-500" /> Auto-fetch subjects:</span>
+                        <button onClick={() => autoFetchSubjects(1, 1)} className="text-xs px-3 py-1.5 bg-gold-100 text-gold-700 rounded-lg hover:bg-gold-200 transition-colors">Y1 S1</button>
+                        <button onClick={() => autoFetchSubjects(1, 2)} className="text-xs px-3 py-1.5 bg-gold-100 text-gold-700 rounded-lg hover:bg-gold-200 transition-colors">Y1 S2</button>
+                        <button onClick={() => autoFetchSubjects(2, 1)} className="text-xs px-3 py-1.5 bg-gold-100 text-gold-700 rounded-lg hover:bg-gold-200 transition-colors">Y2 S1</button>
+                        <button onClick={() => autoFetchSubjects(2, 2)} className="text-xs px-3 py-1.5 bg-gold-100 text-gold-700 rounded-lg hover:bg-gold-200 transition-colors">Y2 S2</button>
+                        <button onClick={() => autoFetchSubjects(3, 1)} className="text-xs px-3 py-1.5 bg-gold-100 text-gold-700 rounded-lg hover:bg-gold-200 transition-colors">Y3 S1</button>
+                        <button onClick={() => autoFetchSubjects(3, 2)} className="text-xs px-3 py-1.5 bg-gold-100 text-gold-700 rounded-lg hover:bg-gold-200 transition-colors">Y3 S2</button>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button onClick={() => addMarkRow(1, 1)} className="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded-lg hover:bg-navy-200 transition-colors"><Plus className="w-3 h-3 inline" /> Y1 S1</button>
+                        <button onClick={() => addMarkRow(1, 2)} className="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded-lg hover:bg-navy-200 transition-colors"><Plus className="w-3 h-3 inline" /> Y1 S2</button>
+                        <button onClick={() => addMarkRow(2, 1)} className="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded-lg hover:bg-navy-200 transition-colors"><Plus className="w-3 h-3 inline" /> Y2 S1</button>
+                        <button onClick={() => addMarkRow(2, 2)} className="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded-lg hover:bg-navy-200 transition-colors"><Plus className="w-3 h-3 inline" /> Y2 S2</button>
+                        <button onClick={() => addMarkRow(3, 1)} className="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded-lg hover:bg-navy-200 transition-colors"><Plus className="w-3 h-3 inline" /> Y3 S1</button>
+                        <button onClick={() => addMarkRow(3, 2)} className="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded-lg hover:bg-navy-200 transition-colors"><Plus className="w-3 h-3 inline" /> Y3 S2</button>
+                      </div>
                     </div>
                   </div>
                 )}

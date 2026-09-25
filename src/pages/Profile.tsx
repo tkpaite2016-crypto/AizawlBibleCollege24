@@ -78,6 +78,10 @@ export default function Profile() {
   const [razorpayEnabled, setRazorpayEnabled] = useState(false);
   const [razorpayKeyId, setRazorpayKeyId] = useState('');
 
+  // Marksheet status (students)
+  const [marksheetReady, setMarksheetReady] = useState(false);
+  const [marksheetLoading, setMarksheetLoading] = useState(false);
+
   // Notifications from context
   const { notifications, unreadCount, loading: notifLoadingCtx, markAsRead, markAllAsRead, pushSupported, pushEnabled, pushError: contextPushError, enablePush, disablePush } = useNotifications();
   const [pushToggling, setPushToggling] = useState(false);
@@ -207,6 +211,7 @@ export default function Profile() {
     loadTransactions();
     if (profile.role === 'student') {
       loadRazorpaySettings();
+      loadMarksheetStatus();
     }
     if (profile.role === 'admin' || profile.role === 'faculty') {
       loadMyArticles();
@@ -242,6 +247,17 @@ export default function Profile() {
       .order('created_at', { ascending: false });
     setTransactions(data ?? []);
     setTransactionsLoading(false);
+  }
+
+  async function loadMarksheetStatus() {
+    setMarksheetLoading(true);
+    const { data } = await supabase
+      .from('student_marksheets')
+      .select('id')
+      .eq('student_id', profile!.id)
+      .maybeSingle();
+    setMarksheetReady(!!data);
+    setMarksheetLoading(false);
   }
 
   async function loadRazorpaySettings() {
@@ -815,6 +831,37 @@ export default function Profile() {
                     >
                       <Mail className="w-4 h-4" /> Request Certificate
                     </a>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Marksheet Status */}
+            {profile.role === 'student' && profile.graduated && (
+              <div className="mt-6 p-5 bg-gradient-to-br from-blue-50 to-navy-50 rounded-xl border border-navy-200">
+                <h3 className="text-sm font-semibold text-navy-900 mb-3 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-navy-600" /> Marksheet Status
+                </h3>
+                {marksheetLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <Loader className="w-4 h-4 animate-spin" /> Checking...
+                  </div>
+                ) : marksheetReady ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-green-700">
+                      <CheckCircle className="w-5 h-5" />
+                      <span className="font-semibold">Your marksheet has been generated successfully!</span>
+                    </div>
+                    <p className="text-sm text-slate-600">
+                      Your academic marksheet is ready. Please contact the administration office to collect or download your marksheet.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs text-slate-400">?</span>
+                    </div>
+                    <span className="text-sm">Marksheet not yet generated. Contact the administration office.</span>
                   </div>
                 )}
               </div>
