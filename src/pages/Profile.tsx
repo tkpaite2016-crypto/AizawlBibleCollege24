@@ -5,7 +5,7 @@ import {
   Calendar, Loader, RefreshCw, Upload, Award, FileCheck, GraduationCap,
   CreditCard, IndianRupee, Plus, CheckCircle, AlertCircle, Sparkles, Palette,
   Ban, Bell, BellOff, CheckCheck, Clock,
-  Newspaper, Pencil, Trash2, FileText,
+  Newspaper, Pencil, Trash2, FileText, Hash,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { BlogPost } from '../lib/supabase';
@@ -39,6 +39,7 @@ export default function Profile() {
     course: profile?.course ?? '',
     student_year: profile?.student_year ?? '',
     admission_date: profile?.admission_date ?? '',
+    ab_number: profile?.ab_number ?? '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -120,6 +121,7 @@ export default function Profile() {
       course: profile?.course ?? '',
       student_year: profile?.student_year ?? '',
       admission_date: profile?.admission_date ?? '',
+      ab_number: profile?.ab_number ?? '',
     });
     setAvatarPreview(null);
     setEditing(true);
@@ -174,6 +176,7 @@ export default function Profile() {
         course: form.course || null,
         student_year: form.student_year || null,
         admission_date: form.admission_date || null,
+        ab_number: form.ab_number || null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', profile!.id);
@@ -1194,6 +1197,13 @@ export default function Profile() {
 
               {profile.role === 'student' && (
                 <>
+                  <div>
+                    <label className="label">AB ID No.</label>
+                    <div className="relative">
+                      <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input value={form.ab_number} onChange={(e) => setForm((f) => ({ ...f, ab_number: e.target.value }))} className="input-field pl-10" placeholder="e.g., AB256" />
+                    </div>
+                  </div>
                   <div>
                     <label className="label">Course / Program</label>
                     <div className="relative">

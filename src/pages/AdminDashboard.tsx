@@ -450,6 +450,11 @@ export default function AdminDashboard() {
     setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, pata_reg_no: pataRegNo || null } : u));
   }
 
+  async function updateUserAbNumber(userId: string, abNumber: string) {
+    await supabase.from('profiles').update({ ab_number: abNumber || null }).eq('id', userId);
+    setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, ab_number: abNumber || null } : u));
+  }
+
   async function updateFacultyOrder(userId: string, order: number) {
     await supabase.from('profiles').update({ display_order: order }).eq('id', userId);
     setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, display_order: order } : u));
@@ -810,6 +815,7 @@ export default function AdminDashboard() {
               {isStudentView && <th className="px-4 py-3 text-left">Course</th>}
               {isStudentView && <th className="px-4 py-3 text-left">Year</th>}
               {isStudentView && <th className="px-4 py-3 text-left">Graduated</th>}
+              {isStudentView && <th className="px-4 py-3 text-left">AB No</th>}
               {isStudentView && <th className="px-4 py-3 text-left">PATA Reg No</th>}
               <th className="px-4 py-3 text-left">Joined</th>
               <th className="px-4 py-3 text-left">Actions</th>
@@ -894,6 +900,12 @@ export default function AdminDashboard() {
                         <GraduationCap className="w-3 h-3" /> Yes
                       </span>
                     ) : <span className="text-slate-400 text-xs">No</span>}
+                  </td>
+                )}
+                {isStudentView && (
+                  <td className="px-4 py-3">
+                    <input type="text" value={u.ab_number ?? ''} onChange={(e) => updateUserAbNumber(u.id, e.target.value)}
+                      placeholder="AB256" className="text-xs border border-slate-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-navy-500 bg-white w-24" />
                   </td>
                 )}
                 {isStudentView && (

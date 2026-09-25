@@ -311,6 +311,10 @@ export default function AdminUserProfile() {
             </h2>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
+                <p className="text-slate-400 text-xs mb-0.5">AB ID No.</p>
+                <p className="font-medium text-navy-900">{profile.ab_number || '—'}</p>
+              </div>
+              <div>
                 <p className="text-slate-400 text-xs mb-0.5">Course / Program</p>
                 <p className="font-medium text-navy-900">{profile.course || '—'}</p>
               </div>
