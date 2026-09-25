@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const body = await req.json();
-    const { full_name, email, phone, student_year, course } = body;
+    const { full_name, email, phone, student_year, course, ab_number } = body;
 
     if (!full_name || !email) {
       return new Response(
@@ -145,6 +145,7 @@ Deno.serve(async (req: Request) => {
           phone: phone || null,
           student_year: student_year || null,
           course: course || null,
+          ab_number: ab_number || null,
         }),
       },
     );

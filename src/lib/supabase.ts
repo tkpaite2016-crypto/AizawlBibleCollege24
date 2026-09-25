@@ -29,6 +29,7 @@ export type Profile = {
   qualification: string | null;
   subject_in_charge: string | null;
   pata_reg_no: string | null;
+  ab_number: string | null;
   position: string | null;
   is_banned: boolean;
   profile_theme: string | null;

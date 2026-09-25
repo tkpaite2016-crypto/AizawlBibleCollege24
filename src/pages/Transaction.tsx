@@ -86,7 +86,7 @@ export default function Transaction() {
 
   // Add student form (admin/faculty/finance)
   const [showAddStudent, setShowAddStudent] = useState(false);
-  const [addStudentForm, setAddStudentForm] = useState({ full_name: '', email: '', phone: '', student_year: '', course: '' });
+  const [addStudentForm, setAddStudentForm] = useState({ full_name: '', email: '', phone: '', student_year: '', course: '', ab_number: '' });
   const [savingStudent, setSavingStudent] = useState(false);
   const [studentError, setStudentError] = useState('');
   const [createdStudent, setCreatedStudent] = useState<{ name: string; email: string; password: string } | null>(null);
@@ -220,6 +220,7 @@ export default function Transaction() {
         phone: addStudentForm.phone.trim(),
         student_year: addStudentForm.student_year || null,
         course: addStudentForm.course || null,
+        ab_number: addStudentForm.ab_number.trim() || null,
       }),
     });
 
@@ -236,7 +237,7 @@ export default function Transaction() {
       email: addStudentForm.email.trim(),
       password: result.password,
     });
-    setAddStudentForm({ full_name: '', email: '', phone: '', student_year: '', course: '' });
+    setAddStudentForm({ full_name: '', email: '', phone: '', student_year: '', course: '', ab_number: '' });
     setSavingStudent(false);
 
     // Load the new student's profile into the transaction panel
@@ -1164,6 +1165,15 @@ export default function Transaction() {
                     className="input-field"
                     placeholder="Phone number (min 4 digits)"
                     required
+                  />
+                </div>
+                <div>
+                  <label className="label">AB ID No. (e.g. AB256)</label>
+                  <input
+                    value={addStudentForm.ab_number}
+                    onChange={(e) => setAddStudentForm((f) => ({ ...f, ab_number: e.target.value }))}
+                    className="input-field"
+                    placeholder="AB256"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
