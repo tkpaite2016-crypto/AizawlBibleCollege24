@@ -476,8 +476,8 @@ export default function AdminUserProfile() {
                 <PDFDownloadLink
                   document={
                     <MarksheetDocument
-                      studentName={profile.full_name || 'Student'}
-                      course={profile.course || ''}
+                      studentName={marksheet.student_name || profile.full_name || 'Student'}
+                      course={marksheet.course_override || profile.course || ''}
                       abNumber={(profile as any).ab_number}
                       pataRegNo={(profile as any).pata_reg_no}
                       marks={marksheetMarks.filter((m) => m.subject_name.trim())}

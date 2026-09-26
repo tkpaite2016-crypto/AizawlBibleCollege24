@@ -257,6 +257,8 @@ export type StudentMarksheet = {
   final_grade: string | null;
   gpa: number | null;
   remarks: string | null;
+  student_name: string | null;
+  course_override: string | null;
   issued_by: string | null;
   created_at: string;
   updated_at: string;

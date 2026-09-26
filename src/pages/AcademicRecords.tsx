@@ -221,6 +221,8 @@ export default function AcademicRecords() {
 
       const { data: updated } = await supabase.from('student_marksheets').update({
         course: selectedStudent.course,
+        student_name: marksheet?.student_name || null,
+        course_override: marksheet?.course_override || null,
         updated_at: new Date().toISOString(),
       }).eq('id', msId).select().single();
       if (updated) setMarksheet(updated as StudentMarksheet);
@@ -415,8 +417,8 @@ export default function AcademicRecords() {
                       <PDFDownloadLink
                         document={
                           <MarksheetDocument
-                            studentName={selectedStudent.full_name || 'Student'}
-                            course={selectedStudent.course || ''}
+                            studentName={marksheet.student_name || selectedStudent.full_name || 'Student'}
+                            course={marksheet.course_override || selectedStudent.course || ''}
                             abNumber={(selectedStudent as any).ab_number}
                             pataRegNo={(selectedStudent as any).pata_reg_no}
                             marks={marks.filter((m) => m.subject_name.trim())}
@@ -476,6 +478,14 @@ export default function AcademicRecords() {
                     <>
                     {/* Summary fields */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-slate-50 rounded-xl">
+                      <div>
+                        <label className="label text-xs">Student Name (override)</label>
+                        <input value={marksheet?.student_name ?? ''} onChange={(e) => setMarksheet((m) => m ? { ...m, student_name: e.target.value } : m)} className="input-field text-sm" placeholder="Use profile name if empty" />
+                      </div>
+                      <div>
+                        <label className="label text-xs">Course (override)</label>
+                        <input value={marksheet?.course_override ?? ''} onChange={(e) => setMarksheet((m) => m ? { ...m, course_override: e.target.value } : m)} className="input-field text-sm" placeholder="Use profile course if empty" />
+                      </div>
                       <div>
                         <label className="label text-xs">Final Grade</label>
                         <input value={marksheet?.final_grade ?? ''} onChange={(e) => setMarksheet((m) => m ? { ...m, final_grade: e.target.value } : m)} className="input-field text-sm" placeholder="A" />

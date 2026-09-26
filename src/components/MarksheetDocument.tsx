@@ -145,6 +145,7 @@ const S = StyleSheet.create({
     borderBottomColor: BORDER,
     fontFamily: 'Times-Bold',
     fontSize: 8.5,
+    textAlign: 'center',
   },
   semesterHeaderRow: {
     width: CONTENT_WIDTH,
@@ -159,6 +160,7 @@ const S = StyleSheet.create({
     alignItems: 'center',
     fontFamily: 'Times-Bold',
     fontSize: 7.8,
+    textAlign: 'center',
   },
   leftBorder: {
     borderLeftWidth: 0.6,
@@ -221,6 +223,7 @@ const S = StyleSheet.create({
     marginTop: 2,
     fontFamily: 'Times-Bold',
     fontSize: 8,
+    textAlign: 'center',
   },
   resultRow: {
     width: CONTENT_WIDTH,
@@ -253,6 +256,7 @@ const S = StyleSheet.create({
     borderColor: BORDER,
     fontFamily: 'Times-Bold',
     fontSize: 8,
+    textAlign: 'center',
   },
   gradingTable: {
     width: CONTENT_WIDTH,
@@ -279,20 +283,12 @@ const S = StyleSheet.create({
   footer: {
     width: CONTENT_WIDTH,
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: 6,
-  },
-  seal: {
-    width: 64,
-    height: 64,
-    objectFit: 'contain',
-    marginLeft: 150,
+    justifyContent: 'center',
+    marginTop: 10,
   },
   signatureBlock: {
-    flex: 1,
     alignItems: 'center',
     marginTop: 28,
-    marginLeft: 30,
   },
   signatureLine: {
     width: 100,
@@ -405,7 +401,7 @@ export function MarksheetDocument({
 
         {[1, 2, 3].map((year) => <YearSection key={year} year={year} marks={marks} />)}
 
-        <Text style={S.remarkTitle}>REMARK</Text>
+        <Text style={S.remarkTitle}>REMARKS</Text>
         <View style={S.resultRow}>
           <Text style={S.resultCell}>Class : {displayClass}</Text>
           <Text style={S.resultCell}>Final Grade : {displayGrade}</Text>
@@ -440,7 +436,6 @@ export function MarksheetDocument({
         </View>
 
         <View style={S.footer}>
-          <Image src="/logo.png" style={S.seal} />
           <View style={S.signatureBlock}>
             <View style={S.signatureLine} />
             <Text style={S.signatureText}>Academic Dean</Text>
