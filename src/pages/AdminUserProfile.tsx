@@ -3,12 +3,13 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Mail, Phone, MapPin, BookOpen, Calendar,
   Loader, Award, GraduationCap, FileCheck, CreditCard as IdCard,
-  DollarSign, Sparkles, Palette,
+  DollarSign, Sparkles, Palette, Download,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Profile, Transaction, StudentMarksheet, StudentMark } from '../lib/supabase';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { CertificateDocument } from '../components/CertificateDocument';
+import { MarksheetDocument } from '../components/MarksheetDocument';
 import { getTheme } from '../lib/themes';
 
 type ApplicationSummary = {
@@ -466,10 +467,34 @@ export default function AdminUserProfile() {
               <h2 className="text-sm font-semibold text-navy-900 flex items-center gap-2">
                 <GraduationCap className="w-4 h-4 text-gold-500" /> Academic Marksheet
               </h2>
-              <div className="flex gap-4 text-xs">
-                {marksheet.final_grade && <span className="font-semibold text-navy-900">Grade: {marksheet.final_grade}</span>}
-                {marksheet.gpa != null && <span className="font-semibold text-navy-900">GPA: {marksheet.gpa.toFixed(2)}</span>}
-                {marksheet.class_result && <span className="font-semibold text-navy-900">{marksheet.class_result}</span>}
+              <div className="flex items-center gap-3">
+                <div className="flex gap-4 text-xs">
+                  {marksheet.final_grade && <span className="font-semibold text-navy-900">Grade: {marksheet.final_grade}</span>}
+                  {marksheet.gpa != null && <span className="font-semibold text-navy-900">GPA: {marksheet.gpa.toFixed(2)}</span>}
+                  {marksheet.class_result && <span className="font-semibold text-navy-900">{marksheet.class_result}</span>}
+                </div>
+                <PDFDownloadLink
+                  document={
+                    <MarksheetDocument
+                      studentName={profile.full_name || 'Student'}
+                      course={profile.course || ''}
+                      abNumber={(profile as any).ab_number}
+                      pataRegNo={(profile as any).pata_reg_no}
+                      marks={marksheetMarks.filter((m) => m.subject_name.trim())}
+                      finalGrade={marksheet.final_grade ?? undefined}
+                      gpa={marksheet.gpa}
+                      classResult={marksheet.class_result ?? undefined}
+                      remarks={marksheet.remarks ?? undefined}
+                      generatedDate={new Date().toISOString()}
+                    />
+                  }
+                  fileName={`${profile.full_name?.replace(/\s+/g, '_') || 'Student'}_Marksheet.pdf`}
+                  className="btn-secondary text-sm flex items-center gap-2"
+                >
+                  {({ loading: l }) => (
+                    <>{l ? <><Loader className="w-4 h-4 animate-spin" /> Preparing...</> : <><Download className="w-4 h-4" /> Download PDF</>}</>
+                  )}
+                </PDFDownloadLink>
               </div>
             </div>
             <div className="overflow-x-auto">

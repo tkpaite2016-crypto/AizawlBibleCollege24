@@ -26,19 +26,18 @@ type Props = {
 
 type SemesterRow = MarkRow & { serialNumber: number };
 
-const NAVY = '#172b58';
 const BLUE = '#0d5ca8';
 const INK = '#111111';
 const PAPER = '#ffffff';
-const BORDER = '#444444';
+const BORDER = '#333333';
 const PAGE_WIDTH = 595;
 const PAGE_HEIGHT = 842;
-const CONTENT_WIDTH = 505;
+const CONTENT_WIDTH = 515;
 const SEMESTER_WIDTH = CONTENT_WIDTH / 2;
-const SERIAL_WIDTH = 28;
-const SUBJECT_WIDTH = 120;
-const CREDIT_WIDTH = 52;
-const MARK_WIDTH = 52;
+const SERIAL_WIDTH = 26;
+const SUBJECT_WIDTH = 130;
+const CREDIT_WIDTH = 50;
+const MARK_WIDTH = 51;
 
 const S = StyleSheet.create({
   page: {
@@ -47,114 +46,111 @@ const S = StyleSheet.create({
     backgroundColor: PAPER,
     color: INK,
     fontFamily: 'Times-Roman',
-    paddingTop: 24,
-    paddingHorizontal: 45,
-    paddingBottom: 24,
+    paddingTop: 18,
+    paddingHorizontal: 40,
+    paddingBottom: 14,
   },
   header: {
     width: CONTENT_WIDTH,
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 78,
   },
   logo: {
-    width: 70,
-    height: 70,
+    width: 58,
+    height: 58,
     objectFit: 'contain',
-    marginLeft: 12,
-    marginRight: 17,
+    marginRight: 10,
   },
   headerText: {
     flex: 1,
     alignItems: 'center',
-    paddingRight: 18,
   },
   collegeName: {
     color: BLUE,
     fontFamily: 'Times-Bold',
-    fontSize: 16,
-    letterSpacing: 0.7,
+    fontSize: 14,
+    letterSpacing: 0.6,
     textAlign: 'center',
   },
   registration: {
     fontFamily: 'Times-Bold',
-    fontSize: 8.5,
-    marginTop: 3,
+    fontSize: 7.5,
+    marginTop: 2,
     textAlign: 'center',
   },
   institution: {
     fontFamily: 'Times-BoldItalic',
-    fontSize: 8,
-    marginTop: 3,
+    fontSize: 7.2,
+    marginTop: 2,
     textAlign: 'center',
   },
   accreditation: {
     fontFamily: 'Times-Bold',
-    fontSize: 7.6,
-    marginTop: 2,
+    fontSize: 6.8,
+    marginTop: 1.5,
     textAlign: 'center',
   },
   address: {
     fontFamily: 'Times-Bold',
-    fontSize: 7.8,
-    marginTop: 2,
+    fontSize: 6.8,
+    marginTop: 1.5,
     textAlign: 'center',
   },
   rule: {
     width: CONTENT_WIDTH,
-    height: 1,
+    height: 0.8,
     backgroundColor: BORDER,
-    marginTop: 5,
+    marginTop: 4,
   },
   transcriptTitle: {
     width: CONTENT_WIDTH,
     fontFamily: 'Times-Bold',
-    fontSize: 13,
+    fontSize: 11,
     textAlign: 'center',
-    marginTop: 5,
-    marginBottom: 12,
+    marginTop: 3,
+    marginBottom: 6,
   },
   studentInfo: {
     width: CONTENT_WIDTH,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: 2,
     paddingHorizontal: 4,
   },
   infoLine: {
     flexDirection: 'row',
-    fontSize: 9.5,
+    fontSize: 8.5,
     fontFamily: 'Times-Bold',
   },
   infoValue: {
     fontFamily: 'Times-Roman',
-    marginLeft: 25,
+    marginLeft: 20,
   },
   infoValueCourse: {
     fontFamily: 'Times-Bold',
-    marginLeft: 20,
+    marginLeft: 16,
   },
   yearSection: {
     width: CONTENT_WIDTH,
-    borderWidth: 0.65,
+    borderWidth: 0.6,
     borderColor: BORDER,
     marginTop: 2,
   },
   yearTitle: {
     width: CONTENT_WIDTH,
-    height: 15,
+    height: 13,
     justifyContent: 'center',
     alignItems: 'center',
-    borderBottomWidth: 0.65,
+    borderBottomWidth: 0.6,
     borderBottomColor: BORDER,
     fontFamily: 'Times-Bold',
-    fontSize: 9.3,
+    fontSize: 8.5,
   },
   semesterHeaderRow: {
     width: CONTENT_WIDTH,
     flexDirection: 'row',
-    height: 16,
-    borderBottomWidth: 0.65,
+    height: 13,
+    borderBottomWidth: 0.6,
     borderBottomColor: BORDER,
   },
   semesterHeader: {
@@ -162,17 +158,17 @@ const S = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     fontFamily: 'Times-Bold',
-    fontSize: 8.5,
+    fontSize: 7.8,
   },
   leftBorder: {
-    borderLeftWidth: 0.65,
+    borderLeftWidth: 0.6,
     borderLeftColor: BORDER,
   },
   columnHeaderRow: {
     width: CONTENT_WIDTH,
     flexDirection: 'row',
-    height: 16,
-    borderBottomWidth: 0.65,
+    height: 13,
+    borderBottomWidth: 0.6,
     borderBottomColor: BORDER,
   },
   semesterColumnHeader: {
@@ -183,9 +179,9 @@ const S = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     fontFamily: 'Times-Bold',
-    fontSize: 7.2,
+    fontSize: 6.8,
     textAlign: 'center',
-    borderRightWidth: 0.65,
+    borderRightWidth: 0.6,
     borderRightColor: BORDER,
   },
   serialCell: { width: SERIAL_WIDTH },
@@ -195,8 +191,8 @@ const S = StyleSheet.create({
   marksRow: {
     width: CONTENT_WIDTH,
     flexDirection: 'row',
-    minHeight: 16,
-    borderBottomWidth: 0.65,
+    minHeight: 13,
+    borderBottomWidth: 0.6,
     borderBottomColor: BORDER,
   },
   semesterMarks: {
@@ -206,38 +202,33 @@ const S = StyleSheet.create({
   },
   cell: {
     justifyContent: 'center',
-    fontSize: 7.5,
-    lineHeight: 8.5,
-    borderRightWidth: 0.65,
+    fontSize: 7,
+    borderRightWidth: 0.6,
     borderRightColor: BORDER,
-    paddingVertical: 2,
+    paddingVertical: 1.5,
   },
   serialText: { width: SERIAL_WIDTH, textAlign: 'center' },
   subjectText: { width: SUBJECT_WIDTH, paddingHorizontal: 3, textAlign: 'left' },
   creditText: { width: CREDIT_WIDTH, textAlign: 'center' },
   markText: { width: MARK_WIDTH, textAlign: 'center', borderRightWidth: 0 },
-  emptyRow: {
-    width: SEMESTER_WIDTH,
-    flexDirection: 'row',
-  },
   remarkTitle: {
     width: CONTENT_WIDTH,
-    height: 16,
+    height: 13,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 0.65,
+    borderWidth: 0.6,
     borderColor: BORDER,
-    marginTop: 1,
+    marginTop: 2,
     fontFamily: 'Times-Bold',
-    fontSize: 8.5,
+    fontSize: 8,
   },
   resultRow: {
     width: CONTENT_WIDTH,
-    height: 34,
+    height: 26,
     flexDirection: 'row',
-    borderLeftWidth: 0.65,
-    borderRightWidth: 0.65,
-    borderBottomWidth: 0.65,
+    borderLeftWidth: 0.6,
+    borderRightWidth: 0.6,
+    borderBottomWidth: 0.6,
     borderColor: BORDER,
   },
   resultCell: {
@@ -245,74 +236,73 @@ const S = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 6,
     fontFamily: 'Times-Bold',
-    fontSize: 8.5,
+    fontSize: 8,
     textAlign: 'center',
-    borderRightWidth: 0.65,
+    borderRightWidth: 0.6,
     borderRightColor: BORDER,
   },
   lastResultCell: { borderRightWidth: 0 },
   gradingTitle: {
     width: CONTENT_WIDTH,
-    height: 17,
+    height: 13,
     justifyContent: 'center',
     alignItems: 'center',
-    borderLeftWidth: 0.65,
-    borderRightWidth: 0.65,
-    borderBottomWidth: 0.65,
+    borderLeftWidth: 0.6,
+    borderRightWidth: 0.6,
+    borderBottomWidth: 0.6,
     borderColor: BORDER,
     fontFamily: 'Times-Bold',
-    fontSize: 8.5,
+    fontSize: 8,
   },
   gradingTable: {
     width: CONTENT_WIDTH,
-    borderLeftWidth: 0.65,
-    borderTopWidth: 0.65,
+    borderLeftWidth: 0.6,
+    borderTopWidth: 0.6,
     borderColor: BORDER,
   },
   gradingRow: {
     width: CONTENT_WIDTH,
     flexDirection: 'row',
-    minHeight: 15,
+    minHeight: 13,
   },
   gradingCell: {
     width: CONTENT_WIDTH / 6,
     justifyContent: 'center',
-    paddingHorizontal: 3,
-    borderRightWidth: 0.65,
-    borderBottomWidth: 0.65,
+    paddingHorizontal: 2,
+    borderRightWidth: 0.6,
+    borderBottomWidth: 0.6,
     borderColor: BORDER,
-    fontSize: 7.2,
+    fontSize: 6.8,
     textAlign: 'center',
   },
-  gradingHeader: { fontFamily: 'Times-Bold', fontSize: 7.5 },
+  gradingHeader: { fontFamily: 'Times-Bold', fontSize: 7 },
   footer: {
     width: CONTENT_WIDTH,
-    height: 83,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingTop: 7,
+    marginTop: 6,
   },
   seal: {
-    width: 78,
-    height: 78,
+    width: 64,
+    height: 64,
     objectFit: 'contain',
-    marginLeft: 166,
+    marginLeft: 150,
   },
   signatureBlock: {
     flex: 1,
     alignItems: 'center',
-    paddingTop: 34,
-    marginLeft: 35,
+    marginTop: 28,
+    marginLeft: 30,
   },
   signatureLine: {
-    width: 108,
+    width: 100,
     borderBottomWidth: 0.7,
     borderBottomColor: INK,
-    marginBottom: 3,
+    marginBottom: 2,
   },
   signatureText: {
     fontFamily: 'Times-Bold',
-    fontSize: 8.5,
+    fontSize: 8,
   },
 });
 
@@ -374,7 +364,6 @@ export function MarksheetDocument({
   studentName,
   course,
   abNumber,
-  pataRegNo,
   marks,
   finalGrade,
   gpa,
@@ -399,7 +388,7 @@ export function MarksheetDocument({
             <Text style={S.registration}>Regd No: MSR 1801 of 29.07.2025</Text>
             <Text style={S.institution}>A Theological Institution of Assemblies of God Mizoram District</Text>
             <Text style={S.accreditation}>Accredited by Pentecostal Association for Theological Accreditation (PATA)</Text>
-            <Text style={S.address}>Post Box – 115, Tuikhual North ‘D’ Mual, Aizawl – 796001, Mizoram, India</Text>
+            <Text style={S.address}>Post Box – 115, Tuikhual North 'D' Mual, Aizawl – 796001, Mizoram, India</Text>
           </View>
         </View>
         <View style={S.rule} />
@@ -457,8 +446,8 @@ export function MarksheetDocument({
             <Text style={S.signatureText}>Academic Dean</Text>
           </View>
         </View>
-        {remarks ? <Text style={{ position: 'absolute', left: 45, bottom: 8, fontSize: 6.5 }}>Remarks: {remarks}</Text> : null}
-        <Text style={{ position: 'absolute', right: 45, bottom: 8, fontSize: 6.5 }}>Generated {generated.toLocaleDateString('en-IN')}</Text>
+        {remarks ? <Text style={{ position: 'absolute', left: 40, bottom: 6, fontSize: 6 }}>Remarks: {remarks}</Text> : null}
+        <Text style={{ position: 'absolute', right: 40, bottom: 6, fontSize: 6 }}>Generated {generated.toLocaleDateString('en-IN')}</Text>
       </Page>
     </Document>
   );

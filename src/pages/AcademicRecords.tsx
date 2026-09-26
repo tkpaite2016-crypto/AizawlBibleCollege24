@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Plus, Trash2, Save, X, Loader, GraduationCap, BookOpen, ArrowUp, ArrowDown, FileText, Award, AlertCircle, ChevronDown, ChevronRight, Download, Sparkles } from 'lucide-react';
+import { Search, Plus, Trash2, Save, X, Loader, GraduationCap, BookOpen, ArrowUp, ArrowDown, FileText, Award, AlertCircle, ChevronDown, ChevronRight, Download, Sparkles, Ban, Pencil } from 'lucide-react';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { supabase } from '../lib/supabase';
 import type { Profile, AcademicSubject, StudentMarksheet, StudentMark } from '../lib/supabase';
@@ -32,6 +32,9 @@ export default function AcademicRecords() {
   const [savingMarksheet, setSavingMarksheet] = useState(false);
   const [marksheetError, setMarksheetError] = useState('');
   const [expandedYear, setExpandedYear] = useState<string>('');
+  const [revoking, setRevoking] = useState(false);
+  const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
+  const [editingMarksheet, setEditingMarksheet] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -101,6 +104,7 @@ export default function AcademicRecords() {
     setSelectedStudent(student);
     setMarksheetError('');
     setMarksLoading(true);
+    setEditingMarksheet(false);
     const { data: ms } = await supabase.from('student_marksheets').select('*').eq('student_id', student.id).maybeSingle();
     if (ms) {
       setMarksheet(ms as StudentMarksheet);
@@ -111,6 +115,22 @@ export default function AcademicRecords() {
       setMarks([]);
     }
     setMarksLoading(false);
+  }
+
+  async function revokeMarksheet() {
+    if (!marksheet || !selectedStudent) return;
+    setRevoking(true);
+    await supabase.from('student_marks').delete().eq('marksheet_id', marksheet.id);
+    const { error } = await supabase.from('student_marksheets').delete().eq('id', marksheet.id);
+    if (!error) {
+      setMarksheet(null);
+      setMarks([]);
+      setEditingMarksheet(false);
+    } else {
+      setMarksheetError('Could not revoke marksheet.');
+    }
+    setRevoking(false);
+    setShowRevokeConfirm(false);
   }
 
   function addMarkRow(year: number, semester: number) {
@@ -390,7 +410,7 @@ export default function AcademicRecords() {
                     <h2 className="font-serif font-bold text-navy-900">Marksheet: {selectedStudent.full_name ?? 'Unknown'}</h2>
                     <p className="text-xs text-slate-500">{selectedStudent.course || 'No course'} · {selectedStudent.email}</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {marksheet && marks.length > 0 && marks.some((m) => m.subject_name.trim()) && (
                       <PDFDownloadLink
                         document={
@@ -415,9 +435,26 @@ export default function AcademicRecords() {
                         )}
                       </PDFDownloadLink>
                     )}
+                    {marksheet && (
+                      <button
+                        onClick={() => setEditingMarksheet((v) => !v)}
+                        className={`text-sm px-3 py-2 rounded-lg flex items-center gap-2 transition-colors ${editingMarksheet ? 'bg-gold-100 text-gold-700' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                      >
+                        <Pencil className="w-4 h-4" /> {editingMarksheet ? 'Done Editing' : 'Edit'}
+                      </button>
+                    )}
                     <button onClick={saveMarksheet} disabled={savingMarksheet} className="btn-primary text-sm">
                       {savingMarksheet ? <><Loader className="w-4 h-4 animate-spin" /> Saving...</> : <><Save className="w-4 h-4" /> Save Marksheet</>}
                     </button>
+                    {marksheet && (
+                      <button
+                        onClick={() => setShowRevokeConfirm(true)}
+                        disabled={revoking}
+                        className="text-sm px-3 py-2 rounded-lg flex items-center gap-2 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors"
+                      >
+                        <Ban className="w-4 h-4" /> Revoke
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -431,6 +468,12 @@ export default function AcademicRecords() {
                   <div className="flex justify-center py-8"><Loader className="w-6 h-6 animate-spin text-gold-500" /></div>
                 ) : (
                   <div className="space-y-4">
+                  {!editingMarksheet && marksheet && marks.length > 0 ? (
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-2 text-green-700 text-sm font-medium">
+                      <Award className="w-4 h-4" /> Marksheet issued. Click "Edit" to modify marks or summary.
+                    </div>
+                  ) : (
+                    <>
                     {/* Summary fields */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-slate-50 rounded-xl">
                       <div>
@@ -515,6 +558,31 @@ export default function AcademicRecords() {
                         <button onClick={() => addMarkRow(2, 2)} className="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded-lg hover:bg-navy-200 transition-colors"><Plus className="w-3 h-3 inline" /> Y2 S2</button>
                         <button onClick={() => addMarkRow(3, 1)} className="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded-lg hover:bg-navy-200 transition-colors"><Plus className="w-3 h-3 inline" /> Y3 S1</button>
                         <button onClick={() => addMarkRow(3, 2)} className="text-xs px-3 py-1.5 bg-navy-100 text-navy-700 rounded-lg hover:bg-navy-200 transition-colors"><Plus className="w-3 h-3 inline" /> Y3 S2</button>
+                      </div>
+                    </div>
+                    </>
+                  )}
+                  </div>
+                )}
+
+                {/* Revoke confirmation modal */}
+                {showRevokeConfirm && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowRevokeConfirm(false)}>
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                          <Ban className="w-5 h-5 text-red-600" />
+                        </div>
+                        <h3 className="text-lg font-serif font-bold text-navy-900">Revoke Marksheet</h3>
+                      </div>
+                      <p className="text-sm text-slate-600 mb-5">
+                        This will permanently delete the marksheet and all its marks for {selectedStudent?.full_name ?? 'this student'}. This action cannot be undone.
+                      </p>
+                      <div className="flex gap-2">
+                        <button onClick={() => setShowRevokeConfirm(false)} className="btn-secondary flex-1 justify-center">Cancel</button>
+                        <button onClick={revokeMarksheet} disabled={revoking} className="flex-1 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors flex items-center justify-center gap-2">
+                          {revoking ? <><Loader className="w-4 h-4 animate-spin" /> Revoking...</> : <><Ban className="w-4 h-4" /> Revoke</>}
+                        </button>
                       </div>
                     </div>
                   </div>
