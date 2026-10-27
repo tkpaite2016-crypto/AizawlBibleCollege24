@@ -49,7 +49,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [dropdown, setDropdown] = useState('');
   const [notifOpen, setNotifOpen] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<{ prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> } | null>(null);
   const { user, profile, signOut } = useAuth();
   const { notifications, unreadCount, adminUnreadMessages, markAsRead, markAllAsRead, pushSupported, pushEnabled, enablePush } = useNotifications();
   const location = useLocation();

@@ -64,10 +64,10 @@ export async function getPushToken(vapidKey: string): Promise<{ token: string | 
         // Wait for the service worker to be activated
         await navigator.serviceWorker.ready;
       }
-    } catch (swError: any) {
+    } catch (swError: unknown) {
       console.error('Service worker registration failed:', swError);
       // If it's a security/origin error, give a helpful message
-      if (swError?.name === 'SecurityError' || swError?.message?.includes('origin')) {
+      if (swError instanceof Error && (swError.name === 'SecurityError' || swError.message.includes('origin'))) {
         return { token: null, error: 'Push notifications require a secure origin (HTTPS). They work on the live website.' };
       }
       return { token: null, error: 'Service worker registration failed. Push notifications will work on the live website.' };
@@ -95,13 +95,13 @@ export async function getPushToken(vapidKey: string): Promise<{ token: string | 
       return { token: null, error: 'Failed to get push token. Please try again.' };
     }
     return { token };
-  } catch (tokenError: any) {
+  } catch (tokenError: unknown) {
     console.error('getToken error:', tokenError);
-    return { token: null, error: tokenError.message || 'Failed to get push token' };
+    return { token: null, error: tokenError instanceof Error ? tokenError.message : 'Failed to get push token' };
   }
 }
 
-export async function onPushMessage(callback: (payload: any) => void): Promise<void> {
+export async function onPushMessage(callback: (payload: { data?: Record<string, unknown>; notification?: { title?: string; body?: string } }) => void): Promise<void> {
   const m = await ensureMessaging();
   if (!m) return;
   onMessage(m, callback);

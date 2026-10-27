@@ -1,0 +1,25 @@
+{
+  "projectId": "69542602",
+  "functions": {
+    "create-student-auth": {
+      "hasChanged": false,
+      "hash": "2afb49610980b31565395675e174284cf1f36b93df170f64193b52a08ca3dcef"
+    },
+    "delete-user-auth": {
+      "hasChanged": false,
+      "hash": "b3f15a84cdfc32a3bc7a1975998cfdfa626fc562bd191dedf3a9531de129d967"
+    },
+    "send-contact-email": {
+      "hasChanged": false,
+      "hash": "35a78631456f4e6b36abe5becee8e985545cbe1db5418be28b5d40c0e68d2f26"
+    },
+    "send-push-notification": {
+      "hasChanged": false,
+      "hash": "a3c4de15132842eaa1e3b4cc99fb65e6f8bfc2c7ee410f3ca84a00ee953ef59c"
+    },
+    "send-scheduled-notifications": {
+      "hasChanged": false,
+      "hash": "d54a7673d326baf259115ce8d5a438d1aca80fc1584dbcca46753139bd51500d"
+    }
+  }
+}

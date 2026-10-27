@@ -354,7 +354,7 @@ export default function Profile() {
   }
 
   async function initiateRazorpayPayment(amount: number) {
-    if (!(window as any).Razorpay) {
+    if (!(window as unknown as { Razorpay?: unknown }).Razorpay) {
       setPaymentError('Razorpay SDK not loaded. Please refresh the page and try again.');
       setPaymentSubmitting(false);
       return;
@@ -370,7 +370,7 @@ export default function Profile() {
       name: 'Aizawl Bible College',
       description: `${paymentForm.payment_type === 'fee' ? 'Fee' : 'Mess'} Payment`,
       order_id: undefined as string | undefined,
-      handler: async (response: any) => {
+      handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
         try {
           const { error: txError } = await supabase.from('transactions').insert({
             user_id: profile!.id,
@@ -419,7 +419,7 @@ export default function Profile() {
       },
     };
 
-    const rzp = new (window as any).Razorpay(options);
+    const rzp = new (window as unknown as { Razorpay: new (opts: unknown) => { open: () => void } }).Razorpay(options);
     rzp.open();
     setPaymentSubmitting(false);
   }
@@ -1145,7 +1145,7 @@ export default function Profile() {
                   <label className="label">Payment Method</label>
                   <select
                     value={paymentForm.payment_method}
-                    onChange={(e) => setPaymentForm((f) => ({ ...f, payment_method: e.target.value as any }))}
+                    onChange={(e) => setPaymentForm((f) => ({ ...f, payment_method: e.target.value as Transaction['payment_method'] }))}
                     className="input-field"
                   >
                     {razorpayEnabled && razorpayKeyId && (

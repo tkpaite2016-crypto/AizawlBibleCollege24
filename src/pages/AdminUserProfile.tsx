@@ -88,7 +88,7 @@ export default function AdminUserProfile() {
     pending: 'bg-amber-100 text-amber-700',
   };
 
-  const isPrincipal = profile?.role === 'faculty' && (profile as any)?.position === 'Principal';
+  const isPrincipal = profile?.role === 'faculty' && profile?.position === 'Principal';
   const isDesigner = profile?.email === 'tkpaite2016@gmail.com';
   const theme = getTheme(profile?.profile_theme);
 
@@ -216,9 +216,9 @@ export default function AdminUserProfile() {
 
             {/* Additional role badges */}
             <div className="flex flex-wrap justify-center items-center gap-2 mb-4">
-              {(profile.role === 'faculty' || profile.role === 'admin') && (profile as any).position && (
+              {(profile.role === 'faculty' || profile.role === 'admin') && profile.position && (
                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-gold-100 text-gold-700">
-                  <Award className="w-3 h-3" /> {(profile as any).position}
+                  <Award className="w-3 h-3" /> {profile.position}
                 </span>
               )}
               {profile.role === 'student' && profile.student_year && (
@@ -266,16 +266,16 @@ export default function AdminUserProfile() {
         </div>
 
         {/* Faculty info */}
-        {(profile.role === 'faculty' || profile.role === 'admin') && ((profile as any).position || profile.qualification || profile.subject_in_charge) && (
+        {(profile.role === 'faculty' || profile.role === 'admin') && (profile.position || profile.qualification || profile.subject_in_charge) && (
           <div className="card p-5">
             <h2 className="text-sm font-semibold text-navy-900 flex items-center gap-2 mb-4">
               <BookOpen className="w-4 h-4 text-gold-500" /> Faculty Information
             </h2>
             <div className="grid grid-cols-2 gap-4 text-sm">
-              {(profile as any).position && (
+              {profile.position && (
                 <div className="col-span-2">
                   <p className="text-slate-400 text-xs mb-0.5">Position</p>
-                  <p className="font-semibold text-navy-900">{(profile as any).position}</p>
+                  <p className="font-semibold text-navy-900">{profile.position}</p>
                 </div>
               )}
               <div>
@@ -478,8 +478,8 @@ export default function AdminUserProfile() {
                     <MarksheetDocument
                       studentName={marksheet.student_name || profile.full_name || 'Student'}
                       course={marksheet.course_override || profile.course || ''}
-                      abNumber={(profile as any).ab_number}
-                      pataRegNo={(profile as any).pata_reg_no}
+                      abNumber={profile.ab_number}
+                      pataRegNo={profile.pata_reg_no}
                       marks={marksheetMarks.filter((m) => m.subject_name.trim())}
                       finalGrade={marksheet.final_grade ?? undefined}
                       gpa={marksheet.gpa}

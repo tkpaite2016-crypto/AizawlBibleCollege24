@@ -153,7 +153,7 @@ Deno.serve(async (req: Request) => {
  * Generates an OAuth2 access token for the Firebase Cloud Messaging API
  * using the service account credentials (JWT signing).
  */
-async function getFirebaseAccessToken(creds: any): Promise<string> {
+async function getFirebaseAccessToken(creds: { client_email: string; private_key: string }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const payload = {
     iss: creds.client_email,

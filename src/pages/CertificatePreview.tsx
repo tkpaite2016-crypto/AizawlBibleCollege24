@@ -33,8 +33,8 @@ export default function CertificatePreview() {
       if (!data.graduated) throw new Error('This user has not graduated yet');
 
       setUser(data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load user');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load user');
     } finally {
       setLoading(false);
     }

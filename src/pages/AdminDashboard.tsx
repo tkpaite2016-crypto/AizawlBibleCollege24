@@ -67,7 +67,7 @@ export default function AdminDashboard() {
   const [, setPhotos] = useState<Photo[]>([]);
   const [siteSettings, setSiteSettings] = useState<SiteSetting[]>([]);
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
-  const [boardMembers, setBoardMembers] = useState<any[]>([]);
+  const [boardMembers, setBoardMembers] = useState<{ id: string; name: string; designation: string | null; photo_url: string | null; display_order: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [stats, setStats] = useState({
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
   // Certificate management
   const [certSearch, setCertSearch] = useState('');
   const [certSearchField, setCertSearchField] = useState<'all' | 'name' | 'year' | 'id' | 'date'>('all');
-  const [certEditing, setCertEditing] = useState<any | null>(null);
+  const [certEditing, setCertEditing] = useState<Profile | null>(null);
   const [certEditForm, setCertEditForm] = useState({ certificate_id: '', course: '', completion_date: '', pata_reg_no: '' });
   const [certSaving, setCertSaving] = useState(false);
 
@@ -157,7 +157,7 @@ export default function AdminDashboard() {
   const [boardMemberForm, setBoardMemberForm] = useState({ name: '', designation: '', photo_url: '', display_order: 0 });
   const [savingBoardMember, setSavingBoardMember] = useState(false);
   const [boardPhotoUploading, setBoardPhotoUploading] = useState(false);
-  const [editingBoardMember, setEditingBoardMember] = useState<any | null>(null);
+  const [editingBoardMember, setEditingBoardMember] = useState<{ id: string; name: string; designation: string | null; photo_url: string | null; display_order: number } | null>(null);
   const [boardEditForm, setBoardEditForm] = useState({ name: '', designation: '', photo_url: '', display_order: 0 });
   const [savingBoardEdit, setSavingBoardEdit] = useState(false);
   const [boardEditPhotoUploading, setBoardEditPhotoUploading] = useState(false);
@@ -303,13 +303,13 @@ export default function AdminDashboard() {
   }
 
   // ── Certificate management ───────────────────────────────────
-  function getCertificateId(u: any): string {
+  function getCertificateId(u: Profile): string {
     if (u.certificate_id) return u.certificate_id;
     const year = u.completion_date ? new Date(u.completion_date).getFullYear() : new Date().getFullYear();
     return `ABC-${year}-${u.id.slice(0, 8).toUpperCase()}`;
   }
 
-  function getCertYear(u: any): number {
+  function getCertYear(u: Profile): number {
     return u.completion_date ? new Date(u.completion_date).getFullYear() : new Date().getFullYear();
   }
 
@@ -537,8 +537,8 @@ export default function AdminDashboard() {
       } : u));
       setShowGraduationModal(false);
       setGraduationForm(null);
-    } catch (err: any) {
-      setGraduationError(err.message || 'Failed to process graduation');
+    } catch (err: unknown) {
+      setGraduationError(err instanceof Error ? err.message : 'Failed to process graduation');
     }
     setProcessingGraduation(false);
   }
@@ -1944,7 +1944,7 @@ export default function AdminDashboard() {
                   </div>
                   <select
                     value={certSearchField}
-                    onChange={(e) => setCertSearchField(e.target.value as any)}
+                    onChange={(e) => setCertSearchField(e.target.value as 'all' | 'name' | 'year' | 'id' | 'date')}
                     className="input-field sm:w-40"
                   >
                     <option value="all">All Fields</option>
@@ -2055,7 +2055,7 @@ export default function AdminDashboard() {
                     <div><label className="label">Title</label><input value={downloadEditForm.title} onChange={(e) => setDownloadEditForm((f) => ({ ...f, title: e.target.value }))} className="input-field" /></div>
                     <div><label className="label">Description</label><textarea value={downloadEditForm.description} onChange={(e) => setDownloadEditForm((f) => ({ ...f, description: e.target.value }))} className="input-field resize-none min-h-16" /></div>
                     <div className="grid grid-cols-2 gap-3">
-                      <div><label className="label">Category</label><select value={downloadEditForm.category} onChange={(e) => setDownloadEditForm((f) => ({ ...f, category: e.target.value as any }))} className="input-field"><option value="general">General</option><option value="syllabus">Syllabus</option><option value="question_paper">Question Paper</option><option value="result">Result</option><option value="notice">Notice</option><option value="other">Other</option></select></div>
+                      <div><label className="label">Category</label><select value={downloadEditForm.category} onChange={(e) => setDownloadEditForm((f) => ({ ...f, category: e.target.value as DownloadType['category'] }))} className="input-field"><option value="general">General</option><option value="syllabus">Syllabus</option><option value="question_paper">Question Paper</option><option value="result">Result</option><option value="notice">Notice</option><option value="other">Other</option></select></div>
                       <div><label className="label">Semester</label><input value={downloadEditForm.semester} onChange={(e) => setDownloadEditForm((f) => ({ ...f, semester: e.target.value }))} className="input-field" /></div>
                     </div>
                     <div className="flex items-center gap-2"><input type="checkbox" id="dl_active" checked={downloadEditForm.is_active} onChange={(e) => setDownloadEditForm((f) => ({ ...f, is_active: e.target.checked }))} className="rounded" /><label htmlFor="dl_active" className="text-sm text-slate-700">Active</label></div>

@@ -163,7 +163,7 @@ export default function AcademicRecords() {
     }
   }
 
-  function updateMark(index: number, field: keyof StudentMark, value: any) {
+  function updateMark(index: number, field: keyof StudentMark, value: string | number) {
     setMarks((prev) => prev.map((m, i) => i === index ? { ...m, [field]: value } : m));
   }
 
@@ -419,8 +419,8 @@ export default function AcademicRecords() {
                           <MarksheetDocument
                             studentName={marksheet.student_name || selectedStudent.full_name || 'Student'}
                             course={marksheet.course_override || selectedStudent.course || ''}
-                            abNumber={(selectedStudent as any).ab_number}
-                            pataRegNo={(selectedStudent as any).pata_reg_no}
+                            abNumber={selectedStudent.ab_number}
+                            pataRegNo={selectedStudent.pata_reg_no}
                             marks={marks.filter((m) => m.subject_name.trim())}
                             finalGrade={marksheet.final_grade ?? undefined}
                             gpa={marksheet.gpa}

@@ -85,6 +85,6 @@ export async function unsubscribeFromPush(userId: string): Promise<{ success: bo
   return { success: true };
 }
 
-export async function listenForForegroundPush(callback: (payload: any) => void): Promise<void> {
+export async function listenForForegroundPush(callback: (payload: { data?: Record<string, unknown>; notification?: { title?: string; body?: string } }) => void): Promise<void> {
   await onPushMessage(callback);
 }

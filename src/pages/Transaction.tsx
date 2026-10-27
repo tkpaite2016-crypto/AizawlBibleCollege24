@@ -377,7 +377,7 @@ export default function Transaction() {
     setPayForm({
       amount: request ? String(request.amount) : '',
       payment_method: 'online',
-      payment_type: (request?.payment_type as any) ?? 'fee',
+      payment_type: request?.payment_type ?? 'fee',
       notes: '',
     });
     setPayError('');
@@ -400,7 +400,7 @@ export default function Transaction() {
     await recordPayment(amount, payForm.payment_method, null);
   }
 
-  async function recordPayment(amount: number, method: string, gateway: any) {
+  async function recordPayment(amount: number, method: string, gateway: { gateway?: string; gateway_payment_id?: string; gateway_order_id?: string; gateway_signature?: string } | null) {
     const timestamp = Date.now();
     const receiptNum = `RCP-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(timestamp).slice(-5)}`;
 
@@ -438,7 +438,7 @@ export default function Transaction() {
   }
 
   async function initiateRazorpay(amount: number) {
-    if (!(window as any).Razorpay) {
+    if (!(window as unknown as { Razorpay?: unknown }).Razorpay) {
       setPayError('Razorpay not loaded. Please refresh and try again.');
       setPaySubmitting(false);
       return;
@@ -449,7 +449,7 @@ export default function Transaction() {
       currency: 'INR',
       name: 'Aizawl Bible College',
       description: payingRequest?.title ?? `${payForm.payment_type} Payment`,
-      handler: async (response: any) => {
+      handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
         await recordPayment(amount, 'online', {
           gateway: 'razorpay',
           gateway_payment_id: response.razorpay_payment_id,
@@ -463,7 +463,7 @@ export default function Transaction() {
         ondismiss: () => { setPaySubmitting(false); setPayError('Payment cancelled.'); },
       },
     };
-    const rzp = new (window as any).Razorpay(options);
+    const rzp = new (window as unknown as { Razorpay: new (opts: unknown) => { open: () => void } }).Razorpay(options);
     rzp.open();
     setPaySubmitting(false);
   }
@@ -601,8 +601,8 @@ export default function Transaction() {
                         <tr key={tx.id} className="hover:bg-slate-50">
                           <td className="px-4 py-3 font-medium text-navy-900">{tx.season}</td>
                           <td className="px-4 py-3">
-                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${(tx as any).payment_type === 'fee' ? 'bg-blue-100 text-blue-700' : (tx as any).payment_type === 'mess' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-700'}`}>
-                              {(tx as any).payment_type ?? 'fee'}
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${tx.payment_type === 'fee' ? 'bg-blue-100 text-blue-700' : tx.payment_type === 'mess' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-700'}`}>
+                              {tx.payment_type ?? 'fee'}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-right font-semibold text-green-600">₹{Number(tx.amount).toLocaleString('en-IN')}</td>
@@ -612,7 +612,7 @@ export default function Transaction() {
                               {new Date(tx.payment_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-slate-500 text-xs font-mono">{(tx as any).receipt_number ?? '—'}</td>
+                          <td className="px-4 py-3 text-slate-500 text-xs font-mono">{tx.receipt_number ?? '—'}</td>
                         </tr>
                       ))}
                       <tr className="bg-green-50 font-semibold">
@@ -696,7 +696,7 @@ export default function Transaction() {
                     <label className="label">Payment Method</label>
                     <select
                       value={payForm.payment_method}
-                      onChange={(e) => setPayForm((f) => ({ ...f, payment_method: e.target.value as any }))}
+                      onChange={(e) => setPayForm((f) => ({ ...f, payment_method: e.target.value as Transaction['payment_method'] }))}
                       className="input-field"
                     >
                       {razorpayEnabled && razorpayKeyId && <option value="online">Pay Online (Razorpay)</option>}
@@ -826,7 +826,7 @@ export default function Transaction() {
                     {allTx.slice(0, 6).map((tx) => (
                       <div key={tx.id} className="flex items-center justify-between py-2 border-b border-slate-100 last:border-b-0">
                         <div className="min-w-0">
-                          <p className="text-xs font-medium text-navy-900 truncate">{(tx.user as any)?.full_name ?? 'Unknown'}</p>
+                          <p className="text-xs font-medium text-navy-900 truncate">{tx.user?.full_name ?? 'Unknown'}</p>
                           <p className="text-xs text-slate-400">{tx.season}</p>
                         </div>
                         <span className="text-xs font-semibold text-green-600 flex-shrink-0 ml-2">₹{Number(tx.amount).toLocaleString('en-IN')}</span>
@@ -849,7 +849,7 @@ export default function Transaction() {
                   {allPaymentRequests.map((req) => (
                     <div key={req.id} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 gap-2">
                       <div className="min-w-0">
-                        <p className="text-xs font-medium text-navy-900 truncate">{(req.student as any)?.full_name ?? 'Student'}</p>
+                        <p className="text-xs font-medium text-navy-900 truncate">{req.student?.full_name ?? 'Student'}</p>
                         <p className="text-xs text-slate-500 truncate">{req.title} — ₹{Number(req.amount).toLocaleString('en-IN')}</p>
                       </div>
                       <div className="flex items-center gap-1">
@@ -1051,8 +1051,8 @@ export default function Transaction() {
                             <tr key={tx.id} className="hover:bg-slate-50">
                               <td className="px-4 py-3 font-medium text-navy-900">{tx.season}</td>
                               <td className="px-4 py-3">
-                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${(tx as any).payment_type === 'fee' ? 'bg-blue-100 text-blue-700' : (tx as any).payment_type === 'mess' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-700'}`}>
-                                  {(tx as any).payment_type ?? 'fee'}
+                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${tx.payment_type === 'fee' ? 'bg-blue-100 text-blue-700' : tx.payment_type === 'mess' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-700'}`}>
+                                  {tx.payment_type ?? 'fee'}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-right font-semibold text-green-600">₹{Number(tx.amount).toLocaleString('en-IN')}</td>
@@ -1062,7 +1062,7 @@ export default function Transaction() {
                                   {new Date(tx.payment_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-slate-500 text-xs font-mono">{(tx as any).receipt_number ?? '—'}</td>
+                              <td className="px-4 py-3 text-slate-500 text-xs font-mono">{tx.receipt_number ?? '—'}</td>
                               {canEdit && (
                                 <td className="px-4 py-3">
                                   <button onClick={() => deleteTransaction(tx.id)} className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50">
