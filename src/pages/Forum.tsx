@@ -53,7 +53,7 @@ function RoleBadge({ profile }: { profile: Profile | undefined }) {
 }
 
 function Avatar({ profile }: { profile: Profile | undefined }) {
-  const initials = (profile?.full_name ?? profile?.email ?? 'U')[0].toUpperCase();
+  const initials = (profile?.full_name || profile?.email || 'U')[0]?.toUpperCase() ?? 'U';
   return (
     <div className="w-9 h-9 rounded-full bg-navy-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
       {profile?.avatar_url ? (

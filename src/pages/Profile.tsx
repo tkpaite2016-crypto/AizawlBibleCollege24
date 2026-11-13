@@ -60,7 +60,7 @@ export default function Profile() {
   const [paymentForm, setPaymentForm] = useState({
     amount: '',
     payment_type: 'fee' as 'fee' | 'mess',
-    payment_method: 'online' as 'cash' | 'bank_transfer' | 'online' | 'cheque',
+    payment_method: 'cash' as 'cash' | 'bank_transfer' | 'online' | 'cheque',
     notes: '',
   });
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
@@ -343,7 +343,7 @@ export default function Profile() {
       setTimeout(() => {
         setPaymentSuccess(false);
         setShowPaymentForm(false);
-        setPaymentForm({ amount: '', payment_type: 'fee', payment_method: 'online', notes: '' });
+        setPaymentForm({ amount: '', payment_type: 'fee', payment_method: 'cash', notes: '' });
         loadTransactions();
       }, 2000);
     } catch (err) {
@@ -394,7 +394,7 @@ export default function Profile() {
           setTimeout(() => {
             setPaymentSuccess(false);
             setShowPaymentForm(false);
-            setPaymentForm({ amount: '', payment_type: 'fee', payment_method: 'online', notes: '' });
+            setPaymentForm({ amount: '', payment_type: 'fee', payment_method: 'cash', notes: '' });
             loadTransactions();
           }, 2000);
         } catch {
@@ -568,7 +568,7 @@ export default function Profile() {
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <span className="text-5xl font-bold text-navy-700">
-                      {(profile.full_name ?? profile.email ?? 'U')[0].toUpperCase()}
+                      {(profile.full_name || profile.email || 'U')[0]?.toUpperCase()}
                     </span>
                   </div>
                 )}

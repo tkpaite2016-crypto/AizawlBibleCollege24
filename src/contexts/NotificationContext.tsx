@@ -157,7 +157,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       .eq('user_id', profile.id)
       .eq('is_read', false);
     // Clear from display so new notifications have room to show
-    setNotifications([]);
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     setUnreadCount(0);
   }, [profile?.id]);
 

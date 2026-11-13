@@ -313,7 +313,7 @@ export default function Navbar() {
                         <img src={profile.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover" />
                       ) : (
                         <span className="text-white text-xs font-bold">
-                          {(profile?.full_name ?? profile?.email ?? 'U')[0].toUpperCase()}
+                          {(profile?.full_name || profile?.email || 'U')[0]?.toUpperCase()}
                         </span>
                       )}
                     </div>

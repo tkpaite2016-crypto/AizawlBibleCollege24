@@ -18,9 +18,22 @@ function getYouTubeEmbedUrl(url: string): string | null {
   return null;
 }
 
+function sanitizeHtml(html: string): string {
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  const scripts = div.querySelectorAll('script, iframe, object, embed, link[rel="import"]');
+  scripts.forEach((el) => el.remove());
+  div.querySelectorAll('*').forEach((el) => {
+    [...el.attributes].forEach((attr) => {
+      if (attr.name.startsWith('on')) el.removeAttribute(attr.name);
+    });
+  });
+  return div.innerHTML;
+}
+
 function formatText(html: string | null): string {
   if (!html) return '';
-  return html;
+  return sanitizeHtml(html);
 }
 
 export default function BlogPostPage() {
@@ -67,10 +80,10 @@ export default function BlogPostPage() {
   function handleShare() {
     if (!post) return;
     const url = `${window.location.origin}/post/${post.slug}`;
-    navigator.clipboard.writeText(url).then(() => {
+    navigator.clipboard?.writeText(url).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    });
+    }).catch(() => {});
   }
 
   if (loading) {
@@ -258,7 +271,7 @@ export default function BlogPostPage() {
         <div className="mt-12 pt-8 border-t border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-navy-100 flex items-center justify-center">
-              <span className="text-navy-700 font-bold text-lg">{post.author_name[0]?.toUpperCase()}</span>
+              <span className="text-navy-700 font-bold text-lg">{post.author_name?.[0]?.toUpperCase() ?? '?'}</span>
             </div>
             <div>
               <p className="font-semibold text-navy-900 text-sm">{post.author_name}</p>

@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) {
       const msg = `DB error: ${error.message} (code: ${error.code}) — session uid: ${currentSession?.user?.id ?? 'none'}`;
       console.error('[fetchProfile]', msg);
-      setProfileError(msg);
+      setProfileError('Unable to load your profile. Please try again or contact support if the problem persists.');
     } else if (!data) {
       // Row not found — try by email as a fallback
       const email = currentSession?.user?.email;
@@ -116,6 +116,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         setLoading(false);
       })();
+    }).catch(() => {
+      setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {

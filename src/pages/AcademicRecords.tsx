@@ -186,7 +186,8 @@ export default function AcademicRecords() {
     setMarksheetError('');
     setSavingMarksheet(true);
 
-    if (!marksheet) {
+    let msId = marksheet?.id;
+    if (!msId) {
       const { data: newMs, error } = await supabase.from('student_marksheets').insert({
         student_id: selectedStudent.id,
         course: selectedStudent.course,
@@ -194,14 +195,14 @@ export default function AcademicRecords() {
       }).select().single();
       if (error) { setMarksheetError('Could not create marksheet.'); setSavingMarksheet(false); return; }
       setMarksheet(newMs as StudentMarksheet);
+      msId = newMs?.id;
     }
 
-    const msId = marksheet?.id;
     if (msId) {
       const { error: delErr } = await supabase.from('student_marks').delete().eq('marksheet_id', msId);
       if (delErr) { setMarksheetError('Could not clear old marks.'); setSavingMarksheet(false); return; }
 
-      const validMarks = marks.filter((m) => m.subject_name.trim());
+      const validMarks = marks.filter((m) => m.subject_name?.trim());
       if (validMarks.length > 0) {
         const { error: insErr } = await supabase.from('student_marks').insert(
           validMarks.map((m, i) => ({
@@ -391,7 +392,7 @@ export default function AcademicRecords() {
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${selectedStudent?.id === s.id ? 'bg-navy-100 text-navy-900' : 'hover:bg-slate-50'}`}
                   >
                     <div className="w-8 h-8 rounded-full bg-navy-200 flex items-center justify-center text-xs font-bold text-navy-700 flex-shrink-0">
-                      {(s.full_name ?? 'U')[0].toUpperCase()}
+                      {(s.full_name || 'U')[0]?.toUpperCase()}
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-navy-900 truncate">{s.full_name ?? 'No name'}</p>
@@ -421,7 +422,7 @@ export default function AcademicRecords() {
                             course={marksheet.course_override || selectedStudent.course || ''}
                             abNumber={selectedStudent.ab_number}
                             pataRegNo={selectedStudent.pata_reg_no}
-                            marks={marks.filter((m) => m.subject_name.trim())}
+                            marks={marks.filter((m) => m.subject_name?.trim())}
                             finalGrade={marksheet.final_grade ?? undefined}
                             gpa={marksheet.gpa}
                             classResult={marksheet.class_result ?? undefined}

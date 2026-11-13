@@ -360,10 +360,14 @@ export default function Transaction() {
         // Push delivery failure shouldn't block the in-app notification
       }
     }
-    setNotifForm({ title: '', message: '', type: 'payment' });
-    setShowNotifForm(false);
-    setNotifSent(true);
-    setTimeout(() => setNotifSent(false), 3000);
+    if (error) {
+      setSaveError(error.message);
+    } else {
+      setNotifForm({ title: '', message: '', type: 'payment' });
+      setShowNotifForm(false);
+      setNotifSent(true);
+      setTimeout(() => setNotifSent(false), 3000);
+    }
     setSendingNotif(false);
   }
 
@@ -376,7 +380,7 @@ export default function Transaction() {
     setPayingRequest(request ?? null);
     setPayForm({
       amount: request ? String(request.amount) : '',
-      payment_method: 'online',
+      payment_method: 'cash',
       payment_type: request?.payment_type ?? 'fee',
       notes: '',
     });
@@ -803,7 +807,7 @@ export default function Transaction() {
                       className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 text-left border-b last:border-b-0 border-slate-100"
                     >
                       <div className="w-8 h-8 bg-navy-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-navy-700 text-xs font-bold">{(u.full_name ?? u.email ?? 'U')[0].toUpperCase()}</span>
+                        <span className="text-navy-700 text-xs font-bold">{(u.full_name || u.email || 'U')[0]?.toUpperCase() ?? 'U'}</span>
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-navy-900 truncate">{u.full_name ?? '—'}</p>
@@ -881,7 +885,7 @@ export default function Transaction() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-navy-100 rounded-xl flex items-center justify-center">
-                        <span className="text-navy-700 font-bold text-lg">{(selectedUser.full_name ?? selectedUser.email ?? 'U')[0].toUpperCase()}</span>
+                        <span className="text-navy-700 font-bold text-lg">{(selectedUser.full_name || selectedUser.email || 'U')[0]?.toUpperCase() ?? 'U'}</span>
                       </div>
                       <div>
                         <h2 className="font-serif font-bold text-navy-900 text-lg">{selectedUser.full_name}</h2>

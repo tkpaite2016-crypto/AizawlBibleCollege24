@@ -343,7 +343,9 @@ export default function AdminDashboard() {
       .eq('id', certEditing.id)
       .select()
       .single();
-    if (!error && data) {
+    if (error) {
+      toast.error('Failed to save certificate edit', error.message);
+    } else if (data) {
       setUsers((prev) => prev.map((u) => u.id === data.id ? data : u));
       setCertEditing(null);
     }
@@ -360,7 +362,8 @@ export default function AdminDashboard() {
     const { error: upErr } = await supabase.storage.from('photos').upload(fileName, file, { upsert: true });
     if (upErr) { setSettingsError(upErr.message); setSettingUploading(null); return; }
     const { data: { publicUrl } } = supabase.storage.from('photos').getPublicUrl(fileName);
-    await supabase.from('site_settings').update({ setting_value: publicUrl }).eq('setting_key', settingKey);
+    const { error: dbErr } = await supabase.from('site_settings').upsert({ setting_key: settingKey, setting_value: publicUrl }, { onConflict: 'setting_key' });
+    if (dbErr) { setSettingsError(dbErr.message); setSettingUploading(null); return; }
     setSiteSettings((prev) => prev.map((s) => s.setting_key === settingKey ? { ...s, setting_value: publicUrl } : s));
     setSettingUploading(null);
     setSettingsSuccess(true);
@@ -370,12 +373,7 @@ export default function AdminDashboard() {
   // ── Hero opacity ─────────────────────────────────────────────
   async function saveHeroOpacity() {
     setHeroOpacitySaving(true);
-    const { data: existing } = await supabase.from('site_settings').select('id').eq('setting_key', 'home_hero_opacity').maybeSingle();
-    if (existing) {
-      await supabase.from('site_settings').update({ setting_value: String(heroOpacity) }).eq('setting_key', 'home_hero_opacity');
-    } else {
-      await supabase.from('site_settings').insert({ setting_key: 'home_hero_opacity', setting_value: String(heroOpacity) });
-    }
+    await supabase.from('site_settings').upsert({ setting_key: 'home_hero_opacity', setting_value: String(heroOpacity) }, { onConflict: 'setting_key' });
     setSiteSettings((prev) => {
       const exists = prev.find((s) => s.setting_key === 'home_hero_opacity');
       if (exists) return prev.map((s) => s.setting_key === 'home_hero_opacity' ? { ...s, setting_value: String(heroOpacity) } : s);
@@ -393,7 +391,7 @@ export default function AdminDashboard() {
       { key: 'principal_greeting_title', value: greetingTitle },
     ];
     for (const u of updates) {
-      await supabase.from('site_settings').update({ setting_value: u.value }).eq('setting_key', u.key);
+      await supabase.from('site_settings').upsert({ setting_key: u.key, setting_value: u.value }, { onConflict: 'setting_key' });
     }
     setGreetingSaving(false);
     setGreetingSuccess(true);
@@ -408,7 +406,7 @@ export default function AdminDashboard() {
     if (error) { setGreetingImageUploading(false); return; }
     const { data: { publicUrl } } = supabase.storage.from('photos').getPublicUrl(fileName);
     setGreetingImageUrl(publicUrl);
-    await supabase.from('site_settings').update({ setting_value: publicUrl }).eq('setting_key', 'principal_greeting_image');
+    await supabase.from('site_settings').upsert({ setting_key: 'principal_greeting_image', setting_value: publicUrl }, { onConflict: 'setting_key' });
     setGreetingImageUploading(false);
   }
 
@@ -472,11 +470,15 @@ export default function AdminDashboard() {
 
   async function deleteUser(userId: string) {
     const { error } = await supabase.functions.invoke('delete-user-auth', { body: { userId } });
-    if (!error) {
-      await supabase.from('profiles').delete().eq('id', userId);
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
+    if (error) {
+      toast.error('Failed to delete user', error.message);
+      setConfirmConfig(null);
+      return;
     }
+    await supabase.from('profiles').delete().eq('id', userId);
+    setUsers((prev) => prev.filter((u) => u.id !== userId));
     setConfirmConfig(null);
+    toast.success('User deleted');
   }
 
   function confirmBanUser(u: Profile) {
@@ -534,6 +536,7 @@ export default function AdminDashboard() {
         ...u, graduated: true,
         completion_date: graduationForm.completionDate,
         pata_reg_no: graduationForm.pataRegNo || null,
+        course: graduationForm.course || u.course,
       } : u));
       setShowGraduationModal(false);
       setGraduationForm(null);
@@ -777,8 +780,12 @@ export default function AdminDashboard() {
   }
 
   async function deleteMessage(id: string) {
+    const msg = contactMessages.find((m) => m.id === id);
     await supabase.from('contact_messages').delete().eq('id', id);
     setContactMessages((prev) => prev.filter((m) => m.id !== id));
+    if (msg && !msg.is_read) {
+      setStats((s) => ({ ...s, unread_messages: Math.max(0, s.unread_messages - 1) }));
+    }
   }
 
   // ── Payment settings ─────────────────────────────────────────
@@ -793,7 +800,7 @@ export default function AdminDashboard() {
       { key: 'razorpay_webhook_secret', value: razorpayWebhookSecret },
     ];
     for (const u of updates) {
-      await supabase.from('site_settings').update({ setting_value: u.value }).eq('setting_key', u.key);
+      await supabase.from('site_settings').upsert({ setting_key: u.key, setting_value: u.value }, { onConflict: 'setting_key' });
     }
     setPaymentSettingsSaving(false);
     setPaymentSettingsSuccess(true);
@@ -828,7 +835,7 @@ export default function AdminDashboard() {
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-navy-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
                       {u.avatar_url ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" /> : (
-                        <span className="text-xs font-bold text-navy-700">{(u.full_name ?? u.email ?? 'U')[0].toUpperCase()}</span>
+                        <span className="text-xs font-bold text-navy-700">{(u.full_name || u.email || 'U')[0]?.toUpperCase() ?? 'U'}</span>
                       )}
                     </div>
                     <div>
@@ -1169,7 +1176,7 @@ export default function AdminDashboard() {
                                         <div className="flex items-center gap-2">
                                           <div className="w-8 h-8 rounded-full bg-gold-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
                                             {u.avatar_url ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" /> : (
-                                              <span className="text-xs font-bold text-gold-700">{(u.full_name ?? u.email ?? 'U')[0].toUpperCase()}</span>
+                                              <span className="text-xs font-bold text-gold-700">{(u.full_name || u.email || 'U')[0]?.toUpperCase() ?? 'U'}</span>
                                             )}
                                           </div>
                                           <div>
@@ -1248,7 +1255,7 @@ export default function AdminDashboard() {
                               <div className="flex items-center gap-2">
                                 <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
                                   {u.avatar_url ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" /> : (
-                                    <span className="text-xs font-bold text-emerald-700">{(u.full_name ?? u.email ?? 'U')[0].toUpperCase()}</span>
+                                    <span className="text-xs font-bold text-emerald-700">{(u.full_name || u.email || 'U')[0]?.toUpperCase() ?? 'U'}</span>
                                   )}
                                 </div>
                                 <div>
@@ -2055,7 +2062,7 @@ export default function AdminDashboard() {
                     <div><label className="label">Title</label><input value={downloadEditForm.title} onChange={(e) => setDownloadEditForm((f) => ({ ...f, title: e.target.value }))} className="input-field" /></div>
                     <div><label className="label">Description</label><textarea value={downloadEditForm.description} onChange={(e) => setDownloadEditForm((f) => ({ ...f, description: e.target.value }))} className="input-field resize-none min-h-16" /></div>
                     <div className="grid grid-cols-2 gap-3">
-                      <div><label className="label">Category</label><select value={downloadEditForm.category} onChange={(e) => setDownloadEditForm((f) => ({ ...f, category: e.target.value as DownloadType['category'] }))} className="input-field"><option value="general">General</option><option value="syllabus">Syllabus</option><option value="question_paper">Question Paper</option><option value="result">Result</option><option value="notice">Notice</option><option value="other">Other</option></select></div>
+                      <div><label className="label">Category</label><select value={downloadEditForm.category} onChange={(e) => setDownloadEditForm((f) => ({ ...f, category: e.target.value as DownloadType['category'] }))} className="input-field"><option value="general">General</option><option value="syllabus">Syllabus</option><option value="academic_calendar">Academic Calendar</option><option value="application_form">Application Form</option><option value="result">Result</option><option value="policy">Policy</option></select></div>
                       <div><label className="label">Semester</label><input value={downloadEditForm.semester} onChange={(e) => setDownloadEditForm((f) => ({ ...f, semester: e.target.value }))} className="input-field" /></div>
                     </div>
                     <div className="flex items-center gap-2"><input type="checkbox" id="dl_active" checked={downloadEditForm.is_active} onChange={(e) => setDownloadEditForm((f) => ({ ...f, is_active: e.target.checked }))} className="rounded" /><label htmlFor="dl_active" className="text-sm text-slate-700">Active</label></div>
@@ -2292,7 +2299,7 @@ export default function AdminDashboard() {
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex items-start gap-3 min-w-0">
                             <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${msg.is_read ? 'bg-slate-100' : 'bg-navy-100'}`}>
-                              <span className={`text-sm font-bold ${msg.is_read ? 'text-slate-600' : 'text-navy-700'}`}>{msg.name[0].toUpperCase()}</span>
+                              <span className={`text-sm font-bold ${msg.is_read ? 'text-slate-600' : 'text-navy-700'}`}>{msg.name?.[0]?.toUpperCase() ?? '?'}</span>
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
